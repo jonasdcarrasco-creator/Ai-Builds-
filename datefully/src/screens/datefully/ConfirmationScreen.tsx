@@ -15,7 +15,6 @@ import {
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
 import * as MailComposer from 'expo-mail-composer';
 import { DatefullyStackParamList } from '../../types';
 import { useDatePlannerStore } from '../../store/datePlannerStore';
@@ -117,27 +116,7 @@ export function ConfirmationScreen() {
       Animated.timing(cardOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
     ]).start();
 
-    // Play chime sound
-    playChime();
   }, []);
-
-  const playChime = async () => {
-    try {
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-      // Attempt to load a bundled chime. Gracefully skips if not present.
-      const { sound } = await Audio.Sound.createAsync(
-        require('../../../assets/sounds/chime.mp3'),
-        { shouldPlay: true, volume: 0.8 }
-      );
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          sound.unloadAsync();
-        }
-      });
-    } catch {
-      // Sound file not present — silent graceful fallback
-    }
-  };
 
   const handleEmailConfirmation = async () => {
     const isAvailable = await MailComposer.isAvailableAsync();
