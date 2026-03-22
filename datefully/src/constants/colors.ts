@@ -1,66 +1,78 @@
 export const Colors = {
-  // Brand
-  primary: '#FF6B9D',
-  primaryLight: '#FF8FB3',
-  primaryDark: '#E85585',
-  secondary: '#9B59B6',
-  secondaryLight: '#B07CC6',
-  accent: '#F39C12',
-  accentLight: '#F7B733',
-
-  // Gradients
-  gradientPink: ['#FF6B9D', '#FF8FB3'],
-  gradientPurple: ['#9B59B6', '#6C3483'],
-  gradientSunset: ['#FF6B9D', '#FF8C00'],
-  gradientNight: ['#1a1a2e', '#16213e', '#0f3460'],
-  gradientRose: ['#FF6B9D', '#C0392B'],
-
-  // Neutrals
-  white: '#FFFFFF',
-  black: '#0D0D0D',
-  gray50: '#FAFAFA',
-  gray100: '#F5F5F5',
-  gray200: '#EEEEEE',
-  gray300: '#E0E0E0',
-  gray400: '#BDBDBD',
-  gray500: '#9E9E9E',
-  gray600: '#757575',
-  gray700: '#616161',
-  gray800: '#424242',
-  gray900: '#212121',
-
-  // Semantic
-  success: '#2ECC71',
-  error: '#E74C3C',
-  warning: '#F39C12',
-  info: '#3498DB',
+  // Datefully brand palette
+  black: '#000000',
+  deepRed: '#c0392b',
+  deepRedDark: '#a93226',
+  gold: '#c9a84c',
+  goldLight: '#d4b96a',
+  white: '#ffffff',
 
   // Backgrounds
-  background: '#FFF8FB',
-  surface: '#FFFFFF',
-  surfaceAlt: '#FFF0F6',
-  overlay: 'rgba(0, 0, 0, 0.5)',
-  overlayLight: 'rgba(0, 0, 0, 0.2)',
+  background: '#000000',
+  surface: '#111111',
+  surfaceAlt: '#1a1a1a',
+  cardBg: '#0d0d0d',
+  overlay: 'rgba(0,0,0,0.7)',
+  overlayLight: 'rgba(0,0,0,0.4)',
 
   // Text
-  textPrimary: '#1A1A2E',
-  textSecondary: '#6B7280',
-  textMuted: '#9CA3AF',
-  textInverse: '#FFFFFF',
-  textLink: '#FF6B9D',
+  textPrimary: '#ffffff',
+  textSecondary: '#c9a84c',
+  textMuted: '#888888',
+  textDim: '#555555',
+  textInverse: '#000000',
 
-  // Cards
-  cardBg: '#FFFFFF',
-  cardShadow: 'rgba(255, 107, 157, 0.15)',
+  // Chip states
+  chipBorder: '#333333',
+  chipBorderSelected: '#c9a84c',
+  chipBgSelected: 'rgba(201,168,76,0.15)',
 
-  // Tab bar
-  tabActive: '#FF6B9D',
-  tabInactive: '#C4C4C4',
-  tabBackground: '#FFFFFF',
+  // Semantic
+  success: '#2ecc71',
+  error: '#c0392b',
+  warning: '#c9a84c',
+  info: '#3498DB',
 
-  // Input
-  inputBorder: '#E5E7EB',
-  inputBorderFocus: '#FF6B9D',
-  inputBackground: '#F9FAFB',
-  inputPlaceholder: '#9CA3AF',
+  // Shadow helpers
+  shadowGold: 'rgba(201,168,76,0.3)',
+  shadowRed: 'rgba(192,57,43,0.4)',
+
+  // Legacy aliases kept for backward compat with existing navigation/components
+  primary: '#c0392b',
+  primaryLight: '#e05a4b',
+  primaryDark: '#a93226',
+  secondary: '#c9a84c',
+  secondaryLight: '#d4b96a',
+  accent: '#c9a84c',
+  accentLight: '#d4b96a',
+
+  gray50: '#1a1a1a',
+  gray100: '#222222',
+  gray200: '#2a2a2a',
+  gray300: '#333333',
+  gray400: '#555555',
+  gray500: '#777777',
+  gray600: '#888888',
+  gray700: '#aaaaaa',
+  gray800: '#cccccc',
+  gray900: '#eeeeee',
+
+  cardShadow: 'rgba(201,168,76,0.15)',
+  tabActive: '#c9a84c',
+  tabInactive: '#555555',
+  tabBackground: '#111111',
+  inputBorder: '#333333',
+  inputBorderFocus: '#c9a84c',
+  inputBackground: '#111111',
+  inputPlaceholder: '#555555',
+
+  gradientPink: ['#c0392b', '#a93226'] as [string, string],
+  gradientPurple: ['#c9a84c', '#a8873a'] as [string, string],
+  gradientSunset: ['#c0392b', '#c9a84c'] as [string, string],
+  gradientNight: ['#1a1a1a', '#000000'] as [string, string, string],
+  gradientRose: ['#c0392b', '#c9a84c'] as [string, string],
+  gradientGold: ['#c9a84c', '#a8873a'] as [string, string],
+  gradientRed: ['#c0392b', '#96281b'] as [string, string],
+  gradientDark: ['#1a1a1a', '#000000'] as [string, string],
+  gradientCard: ['#111111', '#0d0d0d'] as [string, string],
 };

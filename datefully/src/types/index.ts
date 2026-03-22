@@ -206,3 +206,25 @@ export type ReservationsStackParamList = {
   BookTable: { restaurant: Restaurant };
   ReservationConfirmation: { reservation: Reservation };
 };
+
+// ─── Datefully Planner Types ─────────────────────────────────────────────────
+
+export interface DateOption {
+  id: string;
+  name: string;
+  description: string;
+  estimatedCost: number;
+  isPaid: boolean;
+  category: string;
+  openTableUrl: string | null;
+  emoji: string;
+}
+
+export type DatefullyStackParamList = {
+  Splash: undefined;
+  PlannerSetup: undefined;
+  Budget: undefined;
+  PartnerProfile: undefined;
+  Results: undefined;
+  Confirmation: { dateOption: DateOption };
+};

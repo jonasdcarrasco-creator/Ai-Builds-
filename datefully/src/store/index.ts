@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { User, DateIdea, Restaurant, Reservation, DatePlan, Notification } from '../types';
 
+export { useDatePlannerStore, DATE_OPTIONS, getDateOptionsForBudget } from './datePlannerStore';
+
 interface AuthState {
   isAuthenticated: boolean;
   isOnboarded: boolean;
