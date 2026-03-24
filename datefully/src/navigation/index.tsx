@@ -16,19 +16,25 @@ import { SignupScreen } from '../screens/auth/SignupScreen';
 
 // Main Screens
 import { HomeScreen } from '../screens/home/HomeScreen';
+import { DateIdeaDetailScreen } from '../screens/home/DateIdeaDetailScreen';
 import { ExploreScreen } from '../screens/explore/ExploreScreen';
 import { PlanScreen } from '../screens/plan/PlanScreen';
 import { ReservationsScreen } from '../screens/reservations/ReservationsScreen';
+import { RestaurantDetailScreen } from '../screens/reservations/RestaurantDetailScreen';
+import { ReservationConfirmationScreen } from '../screens/reservations/ReservationConfirmationScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+const HomeStack = createNativeStackNavigator();
+const ExploreStack = createNativeStackNavigator();
+const ReservationsStack = createNativeStackNavigator();
 
 const TAB_CONFIG = [
-  { name: 'Home', label: 'Home', icon: 'home', iconOutline: 'home-outline' },
-  { name: 'Explore', label: 'Explore', icon: 'compass', iconOutline: 'compass-outline' },
+  { name: 'HomeTab', label: 'Home', icon: 'home', iconOutline: 'home-outline' },
+  { name: 'ExploreTab', label: 'Explore', icon: 'compass', iconOutline: 'compass-outline' },
   { name: 'Plan', label: 'Plan', icon: 'calendar', iconOutline: 'calendar-outline', center: true },
-  { name: 'Reservations', label: 'Reserve', icon: 'restaurant', iconOutline: 'restaurant-outline' },
+  { name: 'ReservationsTab', label: 'Reserve', icon: 'restaurant', iconOutline: 'restaurant-outline' },
   { name: 'Profile', label: 'You', icon: 'person', iconOutline: 'person-outline' },
 ];
 
@@ -100,16 +106,63 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
   );
 };
 
+// --- Nested Stacks ---
+
+const HomeNavigator = () => (
+  <HomeStack.Navigator screenOptions={{ headerShown: false }}>
+    <HomeStack.Screen name="HomeScreen" component={HomeScreen} />
+    <HomeStack.Screen
+      name="DateIdeaDetail"
+      component={DateIdeaDetailScreen}
+      options={{ animation: 'slide_from_right' }}
+    />
+  </HomeStack.Navigator>
+);
+
+const ExploreNavigator = () => (
+  <ExploreStack.Navigator screenOptions={{ headerShown: false }}>
+    <ExploreStack.Screen name="ExploreScreen" component={ExploreScreen} />
+    <ExploreStack.Screen
+      name="DateIdeaDetail"
+      component={DateIdeaDetailScreen}
+      options={{ animation: 'slide_from_right' }}
+    />
+  </ExploreStack.Navigator>
+);
+
+const ReservationsNavigator = () => (
+  <ReservationsStack.Navigator screenOptions={{ headerShown: false }}>
+    <ReservationsStack.Screen name="ReservationsScreen" component={ReservationsScreen} />
+    <ReservationsStack.Screen
+      name="RestaurantDetail"
+      component={RestaurantDetailScreen}
+      options={{ animation: 'slide_from_right' }}
+    />
+    <ReservationsStack.Screen
+      name="BookTable"
+      component={RestaurantDetailScreen}
+      options={{ animation: 'slide_from_bottom' }}
+    />
+    <ReservationsStack.Screen
+      name="ReservationConfirmation"
+      component={ReservationConfirmationScreen}
+      options={{ animation: 'fade' }}
+    />
+  </ReservationsStack.Navigator>
+);
+
+// --- Main Tabs ---
+
 const MainTabs = () => {
   return (
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Explore" component={ExploreScreen} />
+      <Tab.Screen name="HomeTab" component={HomeNavigator} />
+      <Tab.Screen name="ExploreTab" component={ExploreNavigator} />
       <Tab.Screen name="Plan" component={PlanScreen} />
-      <Tab.Screen name="Reservations" component={ReservationsScreen} />
+      <Tab.Screen name="ReservationsTab" component={ReservationsNavigator} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
