@@ -7,43 +7,58 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { Colors, Spacing, BorderRadius, Shadow } from '../constants';
-import { useAuthStore } from '../store';
+import { useAuthStore, useAppStore } from '../store';
 
-// Auth Screens
+// Auth
 import { WelcomeScreen } from '../screens/auth/WelcomeScreen';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { SignupScreen } from '../screens/auth/SignupScreen';
 
-// Main Screens
+// Home
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { DateIdeaDetailScreen } from '../screens/home/DateIdeaDetailScreen';
+
+// Explore
 import { ExploreScreen } from '../screens/explore/ExploreScreen';
+
+// Plan
 import { PlanScreen } from '../screens/plan/PlanScreen';
+import { PlanDetailScreen } from '../screens/plan/PlanDetailScreen';
+import { CreatePlanScreen } from '../screens/plan/CreatePlanScreen';
+
+// Reservations
 import { ReservationsScreen } from '../screens/reservations/ReservationsScreen';
 import { RestaurantDetailScreen } from '../screens/reservations/RestaurantDetailScreen';
+import { BookTableScreen } from '../screens/reservations/BookTableScreen';
 import { ReservationConfirmationScreen } from '../screens/reservations/ReservationConfirmationScreen';
+
+// Profile & Notifications
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
+import { NotificationsScreen } from '../screens/notifications/NotificationsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
 const ExploreStack = createNativeStackNavigator();
+const PlanStack = createNativeStackNavigator();
 const ReservationsStack = createNativeStackNavigator();
+const ProfileStack = createNativeStackNavigator();
 
 const TAB_CONFIG = [
   { name: 'HomeTab', label: 'Home', icon: 'home', iconOutline: 'home-outline' },
   { name: 'ExploreTab', label: 'Explore', icon: 'compass', iconOutline: 'compass-outline' },
-  { name: 'Plan', label: 'Plan', icon: 'calendar', iconOutline: 'calendar-outline', center: true },
+  { name: 'PlanTab', label: 'Plan', icon: 'calendar', iconOutline: 'calendar-outline', center: true },
   { name: 'ReservationsTab', label: 'Reserve', icon: 'restaurant', iconOutline: 'restaurant-outline' },
-  { name: 'Profile', label: 'You', icon: 'person', iconOutline: 'person-outline' },
+  { name: 'ProfileTab', label: 'You', icon: 'person', iconOutline: 'person-outline' },
 ];
 
 const CustomTabBar = ({ state, descriptors, navigation }: any) => {
+  const { unreadNotifications } = useAppStore();
+
   return (
     <View style={tabStyles.container}>
       <View style={tabStyles.tabBar}>
         {state.routes.map((route: any, index: number) => {
-          const { options } = descriptors[route.key];
           const config = TAB_CONFIG.find((t) => t.name === route.name);
           const isFocused = state.index === index;
           const isCenter = config?.center;
@@ -94,6 +109,14 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                   size={22}
                   color={isFocused ? Colors.primary : Colors.tabInactive}
                 />
+                {/* Notification badge on Profile tab */}
+                {route.name === 'ProfileTab' && unreadNotifications > 0 && (
+                  <View style={tabStyles.badge}>
+                    <Text style={tabStyles.badgeText}>
+                      {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                    </Text>
+                  </View>
+                )}
               </View>
               <Text style={[tabStyles.label, isFocused && tabStyles.labelActive]}>
                 {config?.label}
@@ -106,7 +129,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
   );
 };
 
-// --- Nested Stacks ---
+// ── Nested Stacks ────────────────────────────────────────────
 
 const HomeNavigator = () => (
   <HomeStack.Navigator screenOptions={{ headerShown: false }}>
@@ -130,6 +153,22 @@ const ExploreNavigator = () => (
   </ExploreStack.Navigator>
 );
 
+const PlanNavigator = () => (
+  <PlanStack.Navigator screenOptions={{ headerShown: false }}>
+    <PlanStack.Screen name="PlansScreen" component={PlanScreen} />
+    <PlanStack.Screen
+      name="PlanDetail"
+      component={PlanDetailScreen}
+      options={{ animation: 'slide_from_right' }}
+    />
+    <PlanStack.Screen
+      name="CreatePlan"
+      component={CreatePlanScreen}
+      options={{ animation: 'slide_from_bottom' }}
+    />
+  </PlanStack.Navigator>
+);
+
 const ReservationsNavigator = () => (
   <ReservationsStack.Navigator screenOptions={{ headerShown: false }}>
     <ReservationsStack.Screen name="ReservationsScreen" component={ReservationsScreen} />
@@ -140,7 +179,7 @@ const ReservationsNavigator = () => (
     />
     <ReservationsStack.Screen
       name="BookTable"
-      component={RestaurantDetailScreen}
+      component={BookTableScreen}
       options={{ animation: 'slide_from_bottom' }}
     />
     <ReservationsStack.Screen
@@ -151,22 +190,33 @@ const ReservationsNavigator = () => (
   </ReservationsStack.Navigator>
 );
 
-// --- Main Tabs ---
+const ProfileNavigator = () => (
+  <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
+    <ProfileStack.Screen name="ProfileScreen" component={ProfileScreen} />
+    <ProfileStack.Screen
+      name="Notifications"
+      component={NotificationsScreen}
+      options={{ animation: 'slide_from_right' }}
+    />
+  </ProfileStack.Navigator>
+);
 
-const MainTabs = () => {
-  return (
-    <Tab.Navigator
-      tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{ headerShown: false }}
-    >
-      <Tab.Screen name="HomeTab" component={HomeNavigator} />
-      <Tab.Screen name="ExploreTab" component={ExploreNavigator} />
-      <Tab.Screen name="Plan" component={PlanScreen} />
-      <Tab.Screen name="ReservationsTab" component={ReservationsNavigator} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
-    </Tab.Navigator>
-  );
-};
+// ── Main Tabs ────────────────────────────────────────────────
+
+const MainTabs = () => (
+  <Tab.Navigator
+    tabBar={(props) => <CustomTabBar {...props} />}
+    screenOptions={{ headerShown: false }}
+  >
+    <Tab.Screen name="HomeTab" component={HomeNavigator} />
+    <Tab.Screen name="ExploreTab" component={ExploreNavigator} />
+    <Tab.Screen name="PlanTab" component={PlanNavigator} />
+    <Tab.Screen name="ReservationsTab" component={ReservationsNavigator} />
+    <Tab.Screen name="ProfileTab" component={ProfileNavigator} />
+  </Tab.Navigator>
+);
+
+// ── Root Navigator ───────────────────────────────────────────
 
 export const AppNavigator = () => {
   const { isAuthenticated } = useAuthStore();
@@ -195,6 +245,8 @@ export const AppNavigator = () => {
     </NavigationContainer>
   );
 };
+
+// ── Tab Bar Styles ───────────────────────────────────────────
 
 const tabStyles = StyleSheet.create({
   container: {
@@ -233,6 +285,7 @@ const tabStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: BorderRadius.lg,
+    position: 'relative',
   },
   iconContainerActive: {
     backgroundColor: Colors.surfaceAlt,
@@ -258,5 +311,22 @@ const tabStyles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.textMuted,
     marginTop: 2,
+  },
+  badge: {
+    position: 'absolute',
+    top: 2,
+    right: 4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    color: Colors.white,
+    fontSize: 9,
+    fontWeight: '800',
   },
 });

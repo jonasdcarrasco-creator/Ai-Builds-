@@ -22,7 +22,7 @@ interface PlanDetailScreenProps {
   route: { params: { plan: DatePlan } };
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<string, string> = {
   upcoming: Colors.info,
@@ -36,7 +36,7 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: 'Cancelled',
 };
 
-const ITEM_TYPE_ICONS: Record<string, string> = {
+const ITEM_TYPE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   restaurant: 'restaurant',
   activity: 'compass',
   idea: 'heart',
@@ -49,6 +49,8 @@ const ITEM_TYPE_COLORS: Record<string, string> = {
   idea: '#FF6B9D',
   custom: '#9B59B6',
 };
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(dateStr: string): string {
   try {
@@ -70,8 +72,7 @@ function getDaysAway(dateStr: string): number | null {
     target.setHours(0, 0, 0, 0);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const diff = Math.round((target.getTime() - today.getTime()) / 86_400_000);
-    return diff;
+    return Math.round((target.getTime() - today.getTime()) / 86_400_000);
   } catch {
     return null;
   }
@@ -81,19 +82,50 @@ function formatCurrency(amount: number): string {
   return `$${amount.toFixed(2)}`;
 }
 
+function getCountdownLabel(daysAway: number): string {
+  if (daysAway === 0) return 'Today!';
+  if (daysAway === 1) return '1 day away';
+  if (daysAway > 1) return `${daysAway} days away`;
+  return `${Math.abs(daysAway)} days ago`;
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const color = STATUS_COLORS[status] ?? Colors.gray400;
   return (
-    <View style={[styles.statusBadge, { backgroundColor: color + '22' }]}>
-      <View style={[styles.statusDot, { backgroundColor: color }]} />
-      <Text style={[styles.statusText, { color }]}>
+    <View style={[badgeStyles.wrap, { backgroundColor: color + '22' }]}>
+      <View style={[badgeStyles.dot, { backgroundColor: color }]} />
+      <Text style={[badgeStyles.label, { color }]}>
         {STATUS_LABELS[status] ?? status}
       </Text>
     </View>
   );
 };
+
+const badgeStyles = StyleSheet.create({
+  wrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+});
+
+// ── Budget Card ───────────────────────────────────────────────────────────────
 
 const BudgetCard: React.FC<{
   items: DatePlanItem[];
@@ -107,7 +139,7 @@ const BudgetCard: React.FC<{
   return (
     <View style={[styles.budgetCard, Shadow.sm]}>
       <View style={styles.budgetHeader}>
-        <View style={styles.budgetIcon}>
+        <View style={styles.budgetIconWrap}>
           <Ionicons name="wallet-outline" size={18} color={Colors.primary} />
         </View>
         <Text style={styles.budgetTitle}>Budget Summary</Text>
@@ -115,7 +147,7 @@ const BudgetCard: React.FC<{
 
       <View style={styles.budgetRow}>
         <View style={styles.budgetStat}>
-          <Text style={styles.budgetStatLabel}>Estimated Cost</Text>
+          <Text style={styles.budgetStatLabel}>Estimated</Text>
           <Text style={[styles.budgetStatValue, { color: Colors.textPrimary }]}>
             {formatCurrency(estimated)}
           </Text>
@@ -165,32 +197,39 @@ const BudgetCard: React.FC<{
           No budget set — activities total {formatCurrency(estimated)}
         </Text>
       )}
+
+      {estimated === 0 && (
+        <Text style={styles.budgetNote}>No costs added to activities yet</Text>
+      )}
     </View>
   );
 };
 
+// ── Timeline Item ─────────────────────────────────────────────────────────────
+
 const TimelineItem: React.FC<{
   item: DatePlanItem;
-  index: number;
   isLast: boolean;
   onToggle: (id: string) => void;
-}> = ({ item, index, isLast, onToggle }) => {
+}> = ({ item, isLast, onToggle }) => {
   const typeColor = ITEM_TYPE_COLORS[item.type] ?? Colors.primary;
-  const iconName = (ITEM_TYPE_ICONS[item.type] ?? 'ellipse') as any;
+  const iconName = ITEM_TYPE_ICONS[item.type] ?? 'ellipse';
 
   return (
     <View style={styles.timelineRow}>
-      {/* Left rail */}
+      {/* Left rail: dot + connector line */}
       <View style={styles.timelineRail}>
         <View style={[styles.timelineDot, { backgroundColor: typeColor }]}>
           <Ionicons name={iconName} size={10} color={Colors.white} />
         </View>
-        {!isLast && <View style={[styles.timelineLine, { backgroundColor: typeColor + '40' }]} />}
+        {!isLast && (
+          <View style={[styles.timelineLine, { backgroundColor: typeColor + '40' }]} />
+        )}
       </View>
 
       {/* Content card */}
       <View style={[styles.timelineCard, Shadow.sm, item.isCompleted && styles.timelineCardDone]}>
-        {/* Card header */}
+        {/* Type tag + checkbox */}
         <View style={styles.timelineCardHeader}>
           <View style={styles.timelineTypeTag}>
             <Ionicons name={iconName} size={12} color={typeColor} />
@@ -202,7 +241,7 @@ const TimelineItem: React.FC<{
             style={[styles.checkbox, item.isCompleted && styles.checkboxChecked]}
             onPress={() => onToggle(item.id)}
             activeOpacity={0.8}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             {item.isCompleted && (
               <Ionicons name="checkmark" size={12} color={Colors.white} />
@@ -225,30 +264,30 @@ const TimelineItem: React.FC<{
           </Text>
         )}
 
-        {/* Meta row */}
+        {/* Meta chips: time, duration, cost, location */}
         <View style={styles.timelineMeta}>
           {!!item.time && (
-            <View style={styles.timelineMetaChip}>
+            <View style={styles.metaChip}>
               <Ionicons name="time-outline" size={11} color={Colors.textMuted} />
-              <Text style={styles.timelineMetaText}>{item.time}</Text>
+              <Text style={styles.metaChipText}>{item.time}</Text>
             </View>
           )}
           {!!item.duration && (
-            <View style={styles.timelineMetaChip}>
+            <View style={styles.metaChip}>
               <Ionicons name="hourglass-outline" size={11} color={Colors.textMuted} />
-              <Text style={styles.timelineMetaText}>{item.duration}</Text>
+              <Text style={styles.metaChipText}>{item.duration}</Text>
             </View>
           )}
           {item.cost != null && item.cost > 0 && (
-            <View style={styles.timelineMetaChip}>
+            <View style={styles.metaChip}>
               <Ionicons name="cash-outline" size={11} color={Colors.textMuted} />
-              <Text style={styles.timelineMetaText}>{formatCurrency(item.cost)}</Text>
+              <Text style={styles.metaChipText}>{formatCurrency(item.cost)}</Text>
             </View>
           )}
           {!!item.location && (
-            <View style={styles.timelineMetaChip}>
+            <View style={styles.metaChip}>
               <Ionicons name="location-outline" size={11} color={Colors.textMuted} />
-              <Text style={styles.timelineMetaText} numberOfLines={1}>
+              <Text style={styles.metaChipText} numberOfLines={1}>
                 {item.location}
               </Text>
             </View>
@@ -268,13 +307,14 @@ export const PlanDetailScreen: React.FC<PlanDetailScreenProps> = ({
   const insets = useSafeAreaInsets();
   const { updatePlan } = useAppStore();
 
-  // Local copy of plan so UI updates immediately
+  // Local copy so UI is immediately reactive
   const [plan, setPlan] = useState<DatePlan>(route.params.plan);
 
   const statusColor = STATUS_COLORS[plan.status] ?? Colors.gray400;
   const daysAway = plan.status === 'upcoming' ? getDaysAway(plan.date) : null;
+  const completedCount = plan.items.filter((i) => i.isCompleted).length;
 
-  // ── Handlers ───────────────────────────────────────────────────────────────
+  // ── Handlers ─────────────────────────────────────────────────────────────────
 
   const handleToggleItem = useCallback(
     (itemId: string) => {
@@ -296,6 +336,7 @@ export const PlanDetailScreen: React.FC<PlanDetailScreenProps> = ({
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Complete',
+          style: 'default',
           onPress: () => {
             const updatedPlan = { ...plan, status: 'completed' as const };
             setPlan(updatedPlan);
@@ -318,23 +359,19 @@ export const PlanDetailScreen: React.FC<PlanDetailScreenProps> = ({
         }`,
       });
     } catch {
-      // User dismissed share sheet — no action needed
+      // User dismissed — no action needed
     }
   }, [plan]);
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <View style={styles.container}>
-      {/* ── Header ── */}
-      <View
-        style={[
-          styles.header,
-          { paddingTop: insets.top + Spacing.sm },
-        ]}
-      >
+
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <View style={[styles.header, { paddingTop: insets.top + Spacing.sm }]}>
         <TouchableOpacity
-          style={styles.headerBack}
+          style={styles.headerBtn}
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -350,7 +387,7 @@ export const PlanDetailScreen: React.FC<PlanDetailScreenProps> = ({
         </View>
 
         <TouchableOpacity
-          style={styles.headerAction}
+          style={styles.headerBtn}
           onPress={handleShare}
           activeOpacity={0.7}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -366,52 +403,54 @@ export const PlanDetailScreen: React.FC<PlanDetailScreenProps> = ({
           { paddingBottom: insets.bottom + 120 },
         ]}
       >
-        {/* ── Hero Card ── */}
+
+        {/* ── Hero Gradient Card ──────────────────────────────────────────── */}
         <LinearGradient
-          colors={Colors.gradientPink as [string, string]}
+          colors={['#FF6B9D', '#FF8FB3']}
           style={styles.heroCard}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
-          <View style={styles.heroOverlay}>
+          {/* Decorative background icon */}
+          <View style={styles.heroDecoIcon} pointerEvents="none">
+            <Ionicons name="heart" size={120} color="rgba(255,255,255,0.10)" />
+          </View>
+
+          <View style={styles.heroContent}>
             <View style={styles.heroDateRow}>
               <Ionicons name="calendar" size={16} color="rgba(255,255,255,0.85)" />
-              <Text style={styles.heroDate}>{formatDate(plan.date)}</Text>
+              <Text style={styles.heroDateText}>{formatDate(plan.date)}</Text>
             </View>
+
             {!!plan.time && (
               <View style={styles.heroDateRow}>
                 <Ionicons name="time" size={16} color="rgba(255,255,255,0.85)" />
-                <Text style={styles.heroDate}>{plan.time}</Text>
+                <Text style={styles.heroDateText}>{plan.time}</Text>
               </View>
             )}
+
             {plan.status === 'upcoming' && daysAway != null && (
               <View style={styles.countdownBadge}>
+                <Ionicons name="rocket-outline" size={13} color={Colors.white} />
                 <Text style={styles.countdownText}>
-                  {daysAway === 0
-                    ? 'Today!'
-                    : daysAway === 1
-                    ? '1 day away'
-                    : daysAway > 0
-                    ? `${daysAway} days away`
-                    : `${Math.abs(daysAway)} days ago`}
+                  {getCountdownLabel(daysAway)}
                 </Text>
               </View>
             )}
           </View>
-          <View style={styles.heroIconCluster}>
-            <Ionicons name="heart" size={72} color="rgba(255,255,255,0.12)" />
-          </View>
         </LinearGradient>
 
-        {/* ── Budget ── */}
+        {/* ── Budget Summary Card ─────────────────────────────────────────── */}
         <BudgetCard items={plan.items} totalBudget={plan.totalBudget} />
 
-        {/* ── Timeline ── */}
+        {/* ── Timeline Section ────────────────────────────────────────────── */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Activities</Text>
-          <Text style={styles.sectionCount}>
-            {plan.items.filter((i) => i.isCompleted).length}/{plan.items.length} done
-          </Text>
+          {plan.items.length > 0 && (
+            <Text style={styles.sectionCount}>
+              {completedCount}/{plan.items.length} done
+            </Text>
+          )}
         </View>
 
         {plan.items.length === 0 ? (
@@ -430,7 +469,6 @@ export const PlanDetailScreen: React.FC<PlanDetailScreenProps> = ({
               <TimelineItem
                 key={item.id}
                 item={item}
-                index={index}
                 isLast={index === plan.items.length - 1}
                 onToggle={handleToggleItem}
               />
@@ -438,33 +476,31 @@ export const PlanDetailScreen: React.FC<PlanDetailScreenProps> = ({
           </View>
         )}
 
-        {/* ── Notes ── */}
+        {/* ── Notes Section ───────────────────────────────────────────────── */}
         {!!plan.notes && (
           <View style={[styles.notesCard, Shadow.sm]}>
             <View style={styles.notesHeader}>
-              <Ionicons name="document-text-outline" size={18} color={Colors.primary} />
+              <View style={styles.notesIconWrap}>
+                <Ionicons name="document-text-outline" size={18} color={Colors.primary} />
+              </View>
               <Text style={styles.notesTitle}>Notes</Text>
             </View>
             <Text style={styles.notesBody}>{plan.notes}</Text>
           </View>
         )}
+
       </ScrollView>
 
-      {/* ── Bottom Action Bar ── */}
-      <View
-        style={[
-          styles.bottomBar,
-          { paddingBottom: insets.bottom + Spacing.sm },
-        ]}
-      >
+      {/* ── Bottom Action Bar ────────────────────────────────────────────── */}
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + Spacing.sm }]}>
         <TouchableOpacity
           style={styles.addActivityBtn}
           activeOpacity={0.8}
           onPress={() => {
-            // Navigate to add-activity screen when available
+            // Navigate to add-activity screen when wired up
           }}
         >
-          <Ionicons name="add" size={18} color={Colors.primary} />
+          <Ionicons name="add-circle-outline" size={18} color={Colors.primary} />
           <Text style={styles.addActivityText}>Add Activity</Text>
         </TouchableOpacity>
 
@@ -475,7 +511,7 @@ export const PlanDetailScreen: React.FC<PlanDetailScreenProps> = ({
             activeOpacity={0.85}
           >
             <LinearGradient
-              colors={Colors.gradientPink as [string, string]}
+              colors={['#FF6B9D', '#FF8FB3']}
               style={styles.completeBtnGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -498,7 +534,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
 
-  // Header
+  // ── Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -509,7 +545,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.gray100,
     gap: Spacing.sm,
   },
-  headerBack: {
+  headerBtn: {
     width: 40,
     height: 40,
     borderRadius: BorderRadius.md,
@@ -525,53 +561,29 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '800',
     color: Colors.textPrimary,
-  },
-  headerAction: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.gray100,
-    alignItems: 'center',
-    justifyContent: 'center',
+    letterSpacing: -0.2,
   },
 
-  // Status badge
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: BorderRadius.full,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-
-  // Scroll
+  // ── Scroll
   scrollContent: {
     gap: Spacing.base,
     paddingTop: Spacing.base,
   },
 
-  // Hero
+  // ── Hero
   heroCard: {
     marginHorizontal: Spacing.base,
     borderRadius: BorderRadius.xl,
     padding: Spacing.xl,
-    minHeight: 140,
+    minHeight: 150,
     overflow: 'hidden',
-    position: 'relative',
   },
-  heroOverlay: {
+  heroDecoIcon: {
+    position: 'absolute',
+    right: -10,
+    bottom: -20,
+  },
+  heroContent: {
     gap: Spacing.sm,
     zIndex: 1,
   },
@@ -580,17 +592,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  heroDate: {
+  heroDateText: {
     fontSize: 16,
     fontWeight: '600',
     color: Colors.white,
   },
   countdownBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     alignSelf: 'flex-start',
     marginTop: Spacing.sm,
     backgroundColor: 'rgba(255,255,255,0.25)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: BorderRadius.full,
   },
   countdownText: {
@@ -599,14 +614,8 @@ const styles = StyleSheet.create({
     color: Colors.white,
     letterSpacing: 0.3,
   },
-  heroIconCluster: {
-    position: 'absolute',
-    right: Spacing.xl,
-    bottom: -10,
-    opacity: 0.6,
-  },
 
-  // Budget card
+  // ── Budget
   budgetCard: {
     marginHorizontal: Spacing.base,
     backgroundColor: Colors.white,
@@ -619,7 +628,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.sm,
   },
-  budgetIcon: {
+  budgetIconWrap: {
     width: 34,
     height: 34,
     borderRadius: BorderRadius.md,
@@ -644,13 +653,14 @@ const styles = StyleSheet.create({
   budgetStatLabel: {
     fontSize: 11,
     color: Colors.textMuted,
-    fontWeight: '500',
+    fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   budgetStatValue: {
     fontSize: 18,
     fontWeight: '800',
+    letterSpacing: -0.5,
   },
   budgetDivider: {
     width: 1,
@@ -671,20 +681,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textMuted,
     textAlign: 'center',
+    fontStyle: 'italic',
   },
 
-  // Section header
+  // ── Section header
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.base,
-    marginTop: Spacing.sm,
+    marginTop: Spacing.xs,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '800',
     color: Colors.textPrimary,
+    letterSpacing: -0.3,
   },
   sectionCount: {
     fontSize: 13,
@@ -692,13 +704,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // Timeline container
+  // ── Timeline container
   timeline: {
     paddingHorizontal: Spacing.base,
-    gap: 0,
   },
 
-  // Timeline row
+  // ── Timeline row
   timelineRow: {
     flexDirection: 'row',
     gap: Spacing.md,
@@ -724,7 +735,7 @@ const styles = StyleSheet.create({
     marginBottom: -4,
   },
 
-  // Timeline card
+  // ── Timeline card
   timelineCard: {
     flex: 1,
     backgroundColor: Colors.white,
@@ -734,7 +745,7 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
   },
   timelineCardDone: {
-    opacity: 0.65,
+    opacity: 0.6,
   },
   timelineCardHeader: {
     flexDirection: 'row',
@@ -750,7 +761,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: 0.5,
   },
   checkbox: {
     width: 22,
@@ -786,22 +797,22 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: Spacing.xs,
   },
-  timelineMetaChip: {
+  metaChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
     backgroundColor: Colors.gray50,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: BorderRadius.sm,
   },
-  timelineMetaText: {
+  metaChipText: {
     fontSize: 11,
     color: Colors.textMuted,
     fontWeight: '500',
   },
 
-  // Empty state
+  // ── Empty state
   emptyState: {
     alignItems: 'center',
     paddingVertical: Spacing['3xl'],
@@ -815,6 +826,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: Spacing.sm,
   },
   emptyTitle: {
     fontSize: 18,
@@ -828,7 +840,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  // Notes
+  // ── Notes
   notesCard: {
     marginHorizontal: Spacing.base,
     backgroundColor: Colors.white,
@@ -841,6 +853,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.sm,
   },
+  notesIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   notesTitle: {
     fontSize: 16,
     fontWeight: '700',
@@ -852,7 +872,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  // Bottom bar
+  // ── Bottom bar
   bottomBar: {
     position: 'absolute',
     bottom: 0,
@@ -865,6 +885,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     borderTopWidth: 1,
     borderTopColor: Colors.gray100,
+    ...Shadow.sm,
   },
   addActivityBtn: {
     flex: 1,
@@ -893,7 +914,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 8,
   },
   completeBtnText: {
     fontSize: 15,
