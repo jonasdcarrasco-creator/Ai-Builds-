@@ -7,48 +7,129 @@ import {
   FlatList,
   TouchableOpacity,
   Animated,
-  Image,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, BorderRadius } from '../../constants';
-import { Button } from '../../components/common/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: W, height: H } = Dimensions.get('window');
 
-const SLIDES = [
+const GOLD = '#C9A84C';
+const RED = '#C0392B';
+const DARK_BG = '#0A0A0A';
+const PILL_BG = '#1A1A1A';
+const BORDER = '#2A2A2A';
+
+interface Slide {
+  id: string;
+  icon: string; // Ionicons name
+  iconColor: string;
+  tagline: string;
+  title1: string;
+  title2: string;
+  subtitle: string;
+  pill?: string;
+  ctaLabel: string;
+}
+
+const SLIDES: Slide[] = [
   {
     id: '1',
-    title: 'Plan the\nPerfect Date',
-    subtitle: 'Discover curated date ideas for every mood, budget, and occasion.',
-    gradient: ['#FF6B9D', '#C0392B'] as [string, string],
-    emoji: '💕',
-    bg: 'https://images.unsplash.com/photo-1518621736915-f3b1c41bfd00?w=800',
+    icon: 'calendar',
+    iconColor: RED,
+    tagline: '',
+    title1: 'Date',
+    title2: 'fully',
+    subtitle: 'THE ONLY APP THAT PLANS YOUR ENTIRE DATE — FROM BUDGET TO TRANSPORTATION — SO YOU CAN FOCUS ON THE MOMENT.',
+    pill: 'Philadelphia, PA detected',
+    ctaLabel: 'Get Started — It\'s Free',
   },
   {
     id: '2',
-    title: 'Reserve\nYour Spot',
-    subtitle: 'Real-time restaurant reservations at the best venues, all in one place.',
-    gradient: ['#9B59B6', '#6C3483'] as [string, string],
-    emoji: '🍷',
-    bg: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800',
+    icon: 'map',
+    iconColor: GOLD,
+    tagline: 'STEP 1',
+    title1: 'Smart',
+    title2: ' Planning',
+    subtitle: 'TELL US YOUR VIBE, BUDGET, AND LOCATION. WE HANDLE THE REST — EVERY DETAIL MAPPED OUT.',
+    ctaLabel: 'Sounds Good',
   },
   {
     id: '3',
-    title: 'Make\nMemories',
-    subtitle: 'Capture and relive your best moments together. Your love story, beautifully organized.',
-    gradient: ['#F39C12', '#E74C3C'] as [string, string],
-    emoji: '✨',
-    bg: 'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?w=800',
+    icon: 'cash-outline',
+    iconColor: '#27AE60',
+    tagline: 'STEP 2',
+    title1: 'Budget',
+    title2: ' Tracker',
+    subtitle: 'SET YOUR SPENDING LIMIT AND WE\'LL BUILD A FULL DATE NIGHT WITHIN IT. NO SURPRISES.',
+    ctaLabel: 'Love That',
+  },
+  {
+    id: '4',
+    icon: 'car-outline',
+    iconColor: '#3498DB',
+    tagline: 'STEP 3',
+    title1: 'Door-to-',
+    title2: 'Door',
+    subtitle: 'RIDESHARE, PARKING, WALKING ROUTES — WE FIGURE OUT HOW YOU\'LL GET THERE AND BACK.',
+    ctaLabel: 'That\'s Helpful',
+  },
+  {
+    id: '5',
+    icon: 'restaurant-outline',
+    iconColor: '#E67E22',
+    tagline: 'STEP 4',
+    title1: 'Real',
+    title2: ' Reservations',
+    subtitle: 'BOOK THE BEST TABLES AT TOP RESTAURANTS RIGHT FROM THE APP. NO CALLS, NO WAITING.',
+    ctaLabel: 'Book It',
+  },
+  {
+    id: '6',
+    icon: 'camera-outline',
+    iconColor: '#9B59B6',
+    tagline: 'STEP 5',
+    title1: 'Capture',
+    title2: ' Memories',
+    subtitle: 'SAVE YOUR FAVORITE MOMENTS TOGETHER. EVERY DATE BECOMES PART OF YOUR LOVE STORY.',
+    ctaLabel: 'Aww, Yes',
+  },
+  {
+    id: '7',
+    icon: 'heart-outline',
+    iconColor: RED,
+    tagline: 'STEP 6',
+    title1: 'Built',
+    title2: ' For You',
+    subtitle: 'THE MORE DATES YOU GO ON, THE SMARTER IT GETS. PERSONALIZED PICKS EVERY TIME.',
+    ctaLabel: 'I\'m In',
+  },
+  {
+    id: '8',
+    icon: 'notifications-outline',
+    iconColor: GOLD,
+    tagline: 'STEP 7',
+    title1: 'Never',
+    title2: ' Miss A Beat',
+    subtitle: 'GET REMINDERS, CONFIRMATIONS, AND LAST-MINUTE IDEAS — ALL AT THE RIGHT TIME.',
+    ctaLabel: 'Keep Me Posted',
+  },
+  {
+    id: '9',
+    icon: 'star-outline',
+    iconColor: GOLD,
+    tagline: 'READY',
+    title1: 'Plan Your',
+    title2: ' First Date',
+    subtitle: 'JOIN THOUSANDS OF COUPLES WHO STOPPED STRESSING AND STARTED DATING SMARTER.',
+    ctaLabel: 'Create My Account',
   },
 ];
 
-interface WelcomeScreenProps {
+interface Props {
   navigation: any;
 }
 
-export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
+export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
@@ -56,200 +137,336 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
 
   const handleNext = () => {
     if (activeIndex < SLIDES.length - 1) {
-      flatListRef.current?.scrollToIndex({ index: activeIndex + 1 });
-      setActiveIndex(activeIndex + 1);
+      const next = activeIndex + 1;
+      flatListRef.current?.scrollToIndex({ index: next, animated: true });
+      setActiveIndex(next);
     } else {
       navigation.navigate('Signup');
     }
   };
 
-  const handleSkip = () => {
-    navigation.navigate('Login');
+  const handleBack = () => {
+    if (activeIndex > 0) {
+      const prev = activeIndex - 1;
+      flatListRef.current?.scrollToIndex({ index: prev, animated: true });
+      setActiveIndex(prev);
+    }
   };
 
+  const slide = SLIDES[activeIndex];
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.root, { paddingTop: insets.top }]}>
+      {/* Header label */}
+      <Text style={styles.headerLabel}>
+        SCREEN {activeIndex + 1} OF {SLIDES.length} — {activeIndex === 0 ? 'SPLASH' : `STEP ${activeIndex}`}
+      </Text>
+
+      {/* Swipeable screens */}
       <Animated.FlatList
         ref={flatListRef}
         data={SLIDES}
         horizontal
         pagingEnabled
+        scrollEnabled={false}
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item.id}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { x: scrollX } } }],
           { useNativeDriver: false }
         )}
-        onMomentumScrollEnd={(e) => {
-          const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-          setActiveIndex(index);
-        }}
         renderItem={({ item }) => (
-          <View style={styles.slide}>
-            <Image
-              source={{ uri: item.bg }}
-              style={styles.slideImage}
-              resizeMode="cover"
-            />
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)', '#000']}
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={styles.slideContent}>
-              <Text style={styles.slideEmoji}>{item.emoji}</Text>
-              <Text style={styles.slideTitle}>{item.title}</Text>
-              <Text style={styles.slideSubtitle}>{item.subtitle}</Text>
+          <View style={styles.slideContainer}>
+            {/* Phone frame */}
+            <View style={styles.phoneFrame}>
+              <View style={styles.phoneInner}>
+                {/* Icon */}
+                <View style={styles.iconWrapper}>
+                  <View style={[styles.iconBox, { borderColor: item.iconColor }]}>
+                    <Ionicons name={item.icon as any} size={48} color={item.iconColor} />
+                    {item.id === '1' && (
+                      <View style={styles.heartBadge}>
+                        <Ionicons name="heart" size={14} color={GOLD} />
+                      </View>
+                    )}
+                  </View>
+                </View>
+
+                {/* Title */}
+                <View style={styles.titleRow}>
+                  <Text style={styles.titleGold}>{item.title1}</Text>
+                  <Text style={styles.titleWhite}>{item.title2}</Text>
+                </View>
+
+                {/* Subtitle */}
+                <Text style={styles.subtitle}>{item.subtitle}</Text>
+
+                {/* Location pill (splash only) */}
+                {item.pill && (
+                  <View style={styles.pill}>
+                    <View style={styles.pillDot} />
+                    <Text style={styles.pillText}>{item.pill}</Text>
+                  </View>
+                )}
+
+                {/* CTA Button */}
+                <TouchableOpacity style={styles.ctaButton} onPress={handleNext} activeOpacity={0.85}>
+                  <Text style={styles.ctaText}>{item.ctaLabel}</Text>
+                </TouchableOpacity>
+
+                {/* Sign in link */}
+                <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.signinRow}>
+                  <Text style={styles.signinText}>Already have an account? </Text>
+                  <Text style={styles.signinLink}>Sign In</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         )}
       />
 
-      <View style={[styles.bottomSheet, { paddingBottom: insets.bottom + Spacing.xl }]}>
-        {/* Logo */}
-        <View style={styles.logoRow}>
-          <LinearGradient
-            colors={['#FF6B9D', '#E85585']}
-            style={styles.logoIcon}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Ionicons name="heart" size={18} color={Colors.white} />
-          </LinearGradient>
-          <Text style={styles.logoText}>datefully</Text>
-        </View>
+      {/* Progress dots */}
+      <View style={styles.dotsRow}>
+        {SLIDES.map((_, i) => {
+          const inputRange = [(i - 1) * W, i * W, (i + 1) * W];
+          const dotW = scrollX.interpolate({
+            inputRange,
+            outputRange: [6, 20, 6],
+            extrapolate: 'clamp',
+          });
+          const opacity = scrollX.interpolate({
+            inputRange,
+            outputRange: [0.35, 1, 0.35],
+            extrapolate: 'clamp',
+          });
+          return (
+            <Animated.View
+              key={i}
+              style={[
+                styles.dot,
+                {
+                  width: dotW,
+                  opacity,
+                  backgroundColor: i === activeIndex ? GOLD : '#444',
+                },
+              ]}
+            />
+          );
+        })}
+      </View>
 
-        {/* Dots */}
-        <View style={styles.dotsRow}>
-          {SLIDES.map((_, index) => {
-            const inputRange = [
-              (index - 1) * SCREEN_WIDTH,
-              index * SCREEN_WIDTH,
-              (index + 1) * SCREEN_WIDTH,
-            ];
-            const dotWidth = scrollX.interpolate({
-              inputRange,
-              outputRange: [8, 24, 8],
-              extrapolate: 'clamp',
-            });
-            const opacity = scrollX.interpolate({
-              inputRange,
-              outputRange: [0.4, 1, 0.4],
-              extrapolate: 'clamp',
-            });
-            return (
-              <Animated.View
-                key={index}
-                style={[styles.dot, { width: dotWidth, opacity }]}
-              />
-            );
-          })}
-        </View>
+      {/* Back / Next buttons */}
+      <View style={[styles.navRow, { paddingBottom: insets.bottom + 16 }]}>
+        <TouchableOpacity
+          style={[styles.navBtn, activeIndex === 0 && styles.navBtnDisabled]}
+          onPress={handleBack}
+          disabled={activeIndex === 0}
+        >
+          <Text style={[styles.navBtnText, activeIndex === 0 && { opacity: 0.3 }]}>← Back</Text>
+        </TouchableOpacity>
 
-        <Button
-          title={activeIndex === SLIDES.length - 1 ? "Let's Begin 💕" : 'Continue'}
-          onPress={handleNext}
-          size="xl"
-        />
-
-        <TouchableOpacity onPress={handleSkip} style={styles.loginRow}>
-          <Text style={styles.loginText}>Already have an account? </Text>
-          <Text style={styles.loginLink}>Sign In</Text>
+        <TouchableOpacity style={[styles.navBtn, styles.navBtnActive]} onPress={handleNext}>
+          <Text style={[styles.navBtnText, { color: '#fff' }]}>
+            {activeIndex === SLIDES.length - 1 ? 'Finish' : 'Next →'}
+          </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Tap hint */}
+      {activeIndex === 0 && (
+        <Text style={styles.tapHint}>Tap Next to continue</Text>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: DARK_BG,
+    alignItems: 'center',
   },
-  slide: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+  headerLabel: {
+    color: '#555',
+    fontSize: 10,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    marginTop: 12,
+    marginBottom: 8,
   },
-  slideImage: {
-    ...StyleSheet.absoluteFillObject,
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+  slideContainer: {
+    width: W,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
   },
-  slideContent: {
+  phoneFrame: {
+    width: W * 0.78,
+    minHeight: H * 0.62,
+    backgroundColor: '#111',
+    borderRadius: 36,
+    borderWidth: 1.5,
+    borderColor: GOLD + '55',
+    overflow: 'hidden',
+    shadowColor: GOLD,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  phoneInner: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 28,
+    paddingTop: 40,
+    paddingBottom: 32,
+    gap: 16,
+  },
+  iconWrapper: {
+    marginBottom: 8,
+  },
+  iconBox: {
+    width: 88,
+    height: 88,
+    borderRadius: 20,
+    backgroundColor: '#1A1A1A',
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heartBadge: {
     position: 'absolute',
-    bottom: 280,
-    left: Spacing['2xl'],
-    right: Spacing['2xl'],
-    gap: 12,
+    bottom: -6,
+    right: -6,
+    width: 24,
+    height: 24,
+    backgroundColor: '#111',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: GOLD + '88',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  slideEmoji: {
-    fontSize: 48,
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
   },
-  slideTitle: {
-    fontSize: 44,
+  titleGold: {
+    fontSize: 34,
     fontWeight: '900',
-    color: Colors.white,
-    lineHeight: 50,
-    letterSpacing: -1.5,
+    color: GOLD,
+    letterSpacing: -0.5,
   },
-  slideSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
-    lineHeight: 24,
+  titleWhite: {
+    fontSize: 34,
+    fontWeight: '300',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
   },
-  bottomSheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: Colors.white,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    paddingTop: Spacing['2xl'],
-    paddingHorizontal: Spacing['2xl'],
-    gap: Spacing.xl,
+  subtitle: {
+    fontSize: 9.5,
+    color: '#888',
+    textAlign: 'center',
+    letterSpacing: 1.2,
+    lineHeight: 16,
+    textTransform: 'uppercase',
   },
-  logoRow: {
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: PILL_BG,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    gap: 8,
+  },
+  pillDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: RED,
+  },
+  pillText: {
+    color: '#CCC',
+    fontSize: 12,
+    letterSpacing: 0.3,
+  },
+  ctaButton: {
+    width: '100%',
+    backgroundColor: RED,
+    borderRadius: 28,
+    paddingVertical: 15,
+    alignItems: 'center',
+    shadowColor: RED,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  ctaText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  signinRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
   },
-  logoIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+  signinText: {
+    color: '#666',
+    fontSize: 12,
   },
-  logoText: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-    letterSpacing: -0.5,
+  signinLink: {
+    color: GOLD,
+    fontSize: 12,
+    fontWeight: '700',
   },
   dotsRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
     alignItems: 'center',
+    gap: 5,
+    marginTop: 16,
+    marginBottom: 12,
   },
   dot: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.primary,
+    height: 6,
+    borderRadius: 3,
   },
-  loginRow: {
+  navRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    gap: 12,
+    paddingHorizontal: 24,
+  },
+  navBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#333',
     alignItems: 'center',
   },
-  loginText: {
-    fontSize: 14,
-    color: Colors.textSecondary,
+  navBtnDisabled: {
+    borderColor: '#222',
   },
-  loginLink: {
+  navBtnActive: {
+    backgroundColor: '#222',
+    borderColor: '#444',
+  },
+  navBtnText: {
+    color: '#CCC',
     fontSize: 14,
-    fontWeight: '700',
-    color: Colors.primary,
+    fontWeight: '600',
+  },
+  tapHint: {
+    color: '#444',
+    fontSize: 11,
+    letterSpacing: 0.5,
+    marginTop: 4,
+    marginBottom: 8,
   },
 });
