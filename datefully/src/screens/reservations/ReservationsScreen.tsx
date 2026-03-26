@@ -5,14 +5,15 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Image,
   Modal,
+  TextInput,
   Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Spacing, BorderRadius, Shadow } from '../../constants';
-import { RestaurantCard } from '../../components/cards/RestaurantCard';
+import { Colors, Spacing, BorderRadius } from '../../constants';
 import { useAppStore } from '../../store';
 import { MOCK_RESTAURANTS } from '../../constants/mockData';
 import { Restaurant, Reservation } from '../../types';
@@ -21,145 +22,203 @@ interface ReservationsScreenProps {
   navigation: any;
 }
 
+type TabType = 'restaurants' | 'bookings';
+
+const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
+  confirmed: { bg: 'rgba(46,204,113,0.15)', text: '#2ECC71' },
+  pending: { bg: 'rgba(212,175,55,0.15)', text: '#D4AF37' },
+  cancelled: { bg: 'rgba(231,76,60,0.15)', text: '#E74C3C' },
+  completed: { bg: 'rgba(100,100,100,0.15)', text: '#888888' },
+};
+
 export const ReservationsScreen: React.FC<ReservationsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { reservations, addReservation, cancelReservation } = useAppStore();
+  const [activeTab, setActiveTab] = useState<TabType>('restaurants');
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
-  const [selectedTime, setSelectedTime] = useState('');
   const [partySize, setPartySize] = useState(2);
-  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [selectedTime, setSelectedTime] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState(false);
-  const [activeTab, setActiveTab] = useState<'restaurants' | 'mybookings'>('restaurants');
+  const [confirmCode, setConfirmCode] = useState('');
 
-  const handleSelectRestaurant = (restaurant: Restaurant) => {
-    setSelectedRestaurant(restaurant);
-    setSelectedTime('');
-    setShowBookingModal(true);
-  };
+  const upcoming = reservations.filter(
+    (r) => r.status === 'confirmed' || r.status === 'pending'
+  );
+  const past = reservations.filter(
+    (r) => r.status === 'completed' || r.status === 'cancelled'
+  );
 
   const handleBook = () => {
     if (!selectedTime) {
-      Alert.alert('Select a time', 'Please choose a time slot to continue.');
+      Alert.alert('Select Time', 'Please select a time slot to continue.');
       return;
     }
-    const reservation: Reservation = {
+    if (!selectedRestaurant) return;
+    const code = 'DFY-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    setConfirmCode(code);
+    addReservation({
       id: Date.now().toString(),
-      restaurantId: selectedRestaurant!.id,
-      restaurantName: selectedRestaurant!.name,
-      restaurantImage: selectedRestaurant!.imageUrl,
-      date: new Date().toISOString().split('T')[0],
+      restaurantId: selectedRestaurant.id,
+      restaurantName: selectedRestaurant.name,
+      restaurantImage: selectedRestaurant.imageUrl,
+      date: new Date().toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      }),
       time: selectedTime,
       partySize,
       specialRequests: specialRequests || undefined,
       status: 'confirmed',
-      confirmationCode: `DATE-${Math.random().toString(36).toUpperCase().slice(2, 8)}`,
+      confirmationCode: code,
       createdAt: new Date().toISOString(),
-    };
-    addReservation(reservation);
+    });
     setBookingSuccess(true);
-    setTimeout(() => {
-      setBookingSuccess(false);
-      setShowBookingModal(false);
-      setSelectedRestaurant(null);
-      setSelectedTime('');
-      setPartySize(2);
-      setActiveTab('mybookings');
-    }, 2000);
   };
 
-  const upcomingReservations = reservations.filter((r) => r.status === 'confirmed' || r.status === 'pending');
-  const pastReservations = reservations.filter((r) => r.status === 'completed' || r.status === 'cancelled');
+  const closeModal = () => {
+    setSelectedRestaurant(null);
+    setPartySize(2);
+    setSelectedTime('');
+    setSpecialRequests('');
+    setBookingSuccess(false);
+    setConfirmCode('');
+  };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + Spacing.base }]}>
+      <LinearGradient
+        colors={['#0A0A0A', '#1C0000', '#0A0A0A']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
         <Text style={styles.headerTitle}>Reservations</Text>
-        <Text style={styles.headerSubtitle}>Book the best tables in town</Text>
+        <Text style={styles.headerSub}>Book the best spots for your date night</Text>
 
         {/* Tabs */}
-        <View style={styles.tabsRow}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'restaurants' && styles.tabActive]}
-            onPress={() => setActiveTab('restaurants')}
-          >
-            <Text style={[styles.tabText, activeTab === 'restaurants' && styles.tabTextActive]}>
-              Restaurants
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'mybookings' && styles.tabActive]}
-            onPress={() => setActiveTab('mybookings')}
-          >
-            <Text style={[styles.tabText, activeTab === 'mybookings' && styles.tabTextActive]}>
-              My Bookings {reservations.length > 0 ? `(${reservations.length})` : ''}
-            </Text>
-          </TouchableOpacity>
+        <View style={styles.tabs}>
+          {(['restaurants', 'bookings'] as TabType[]).map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              style={[styles.tab, activeTab === tab && styles.tabActive]}
+              onPress={() => setActiveTab(tab)}
+            >
+              {activeTab === tab ? (
+                <LinearGradient
+                  colors={['#8B0000', '#D4AF37']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.tabGrad}
+                >
+                  <Text style={styles.tabTextActive}>
+                    {tab === 'restaurants' ? 'Restaurants' : `My Bookings (${reservations.length})`}
+                  </Text>
+                </LinearGradient>
+              ) : (
+                <Text style={styles.tabText}>
+                  {tab === 'restaurants' ? 'Restaurants' : `My Bookings (${reservations.length})`}
+                </Text>
+              )}
+            </TouchableOpacity>
+          ))}
         </View>
-      </View>
+      </LinearGradient>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+      >
         {activeTab === 'restaurants' ? (
-          <View style={styles.restaurantsList}>
+          <View style={styles.section}>
             {MOCK_RESTAURANTS.map((r) => (
-              <RestaurantCard
-                key={r.id}
-                restaurant={r}
-                onPress={() => handleSelectRestaurant(r)}
-              />
+              <View key={r.id} style={styles.restCard}>
+                <Image source={{ uri: r.imageUrl }} style={styles.restImg} />
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.85)']}
+                  style={StyleSheet.absoluteFill}
+                />
+                {r.isVerified && (
+                  <View style={styles.verifiedBadge}>
+                    <Ionicons name="checkmark-circle" size={13} color={Colors.primary} />
+                    <Text style={styles.verifiedText}>Verified</Text>
+                  </View>
+                )}
+                <View style={styles.restInfo}>
+                  <Text style={styles.restName}>{r.name}</Text>
+                  <View style={styles.restMetaRow}>
+                    <View style={styles.ratingRow}>
+                      <Ionicons name="star" size={12} color={Colors.primary} />
+                      <Text style={styles.ratingText}>{r.rating}</Text>
+                      <Text style={styles.reviewCount}>({r.reviewCount})</Text>
+                    </View>
+                    <Text style={styles.dot}>·</Text>
+                    <Text style={styles.cuisine}>{r.cuisine}</Text>
+                    <Text style={styles.dot}>·</Text>
+                    <Text style={styles.price}>{r.priceRange}</Text>
+                    <Text style={styles.dot}>·</Text>
+                    <Text style={styles.distance}>{r.distance}</Text>
+                  </View>
+                  {r.features.length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      <View style={styles.featureRow}>
+                        {r.features.slice(0, 4).map((f) => (
+                          <View key={f} style={styles.featureTag}>
+                            <Text style={styles.featureText}>{f}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </ScrollView>
+                  )}
+                  <TouchableOpacity
+                    style={styles.bookBtn}
+                    onPress={() => setSelectedRestaurant(r)}
+                  >
+                    <LinearGradient
+                      colors={['#D4AF37', '#B8942A']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.bookBtnGrad}
+                    >
+                      <Ionicons name="calendar-outline" size={15} color="#0A0A0A" />
+                      <Text style={styles.bookBtnText}>Reserve a Table</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </View>
             ))}
           </View>
         ) : (
-          <View style={styles.bookingsList}>
+          <View style={styles.section}>
             {reservations.length === 0 ? (
-              <View style={styles.emptyBookings}>
-                <Text style={styles.emptyEmoji}>🍽️</Text>
-                <Text style={styles.emptyTitle}>No reservations yet</Text>
-                <Text style={styles.emptySubtitle}>
-                  Browse restaurants and book a table for your next date.
+              <View style={styles.empty}>
+                <Text style={styles.emptyEmoji}>🍷</Text>
+                <Text style={styles.emptyTitle}>No Reservations Yet</Text>
+                <Text style={styles.emptySub}>
+                  Browse restaurants and make your first reservation
                 </Text>
                 <TouchableOpacity
-                  style={styles.browseBtn}
+                  style={styles.emptyBtn}
                   onPress={() => setActiveTab('restaurants')}
                 >
-                  <Text style={styles.browseBtnText}>Browse Restaurants</Text>
+                  <Text style={styles.emptyBtnText}>Browse Restaurants</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <>
-                {upcomingReservations.length > 0 && (
-                  <>
-                    <Text style={styles.bookingSection}>Upcoming</Text>
-                    {upcomingReservations.map((r) => (
-                      <ReservationCard
-                        key={r.id}
-                        reservation={r}
-                        onCancel={() => {
-                          Alert.alert(
-                            'Cancel Reservation',
-                            'Are you sure you want to cancel this reservation?',
-                            [
-                              { text: 'Keep It', style: 'cancel' },
-                              {
-                                text: 'Cancel Reservation',
-                                style: 'destructive',
-                                onPress: () => cancelReservation(r.id),
-                              },
-                            ]
-                          );
-                        }}
-                      />
-                    ))}
-                  </>
+                {upcoming.length > 0 && (
+                  <View>
+                    <Text style={styles.groupTitle}>Upcoming</Text>
+                    {upcoming.map((res) => <ReservationCard key={res.id} res={res} onCancel={cancelReservation} />)}
+                  </View>
                 )}
-                {pastReservations.length > 0 && (
-                  <>
-                    <Text style={[styles.bookingSection, { marginTop: Spacing.xl }]}>Past</Text>
-                    {pastReservations.map((r) => (
-                      <ReservationCard key={r.id} reservation={r} />
-                    ))}
-                  </>
+                {past.length > 0 && (
+                  <View style={{ marginTop: Spacing.xl }}>
+                    <Text style={styles.groupTitle}>Past</Text>
+                    {past.map((res) => <ReservationCard key={res.id} res={res} onCancel={cancelReservation} />)}
+                  </View>
                 )}
               </>
             )}
@@ -169,171 +228,230 @@ export const ReservationsScreen: React.FC<ReservationsScreenProps> = ({ navigati
 
       {/* Booking Modal */}
       <Modal
-        visible={showBookingModal}
+        visible={!!selectedRestaurant}
         animationType="slide"
         presentationStyle="pageSheet"
+        onRequestClose={closeModal}
       >
-        <View style={styles.modal}>
-          {bookingSuccess ? (
-            <View style={styles.successView}>
-              <LinearGradient
-                colors={['#FF6B9D', '#9B59B6']}
-                style={styles.successGradient}
-              >
+        {selectedRestaurant && (
+          <View style={styles.modal}>
+            {bookingSuccess ? (
+              <View style={styles.successScreen}>
+                <LinearGradient
+                  colors={['#0A0A0A', '#1C0000']}
+                  style={StyleSheet.absoluteFill}
+                />
                 <Text style={styles.successEmoji}>🎉</Text>
                 <Text style={styles.successTitle}>Reservation Confirmed!</Text>
-                <Text style={styles.successSubtitle}>
-                  You're all set at {selectedRestaurant?.name}
+                <Text style={styles.successSub}>
+                  Your table at {selectedRestaurant.name} is booked
                 </Text>
-              </LinearGradient>
-            </View>
-          ) : (
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <View style={styles.modalHeader}>
-                <View>
-                  <Text style={styles.modalTitle}>{selectedRestaurant?.name}</Text>
-                  <Text style={styles.modalSubtitle}>{selectedRestaurant?.cuisine}</Text>
+                <View style={styles.codeCard}>
+                  <Text style={styles.codeLabel}>Confirmation Code</Text>
+                  <Text style={styles.codeValue}>{confirmCode}</Text>
                 </View>
-                <TouchableOpacity
-                  onPress={() => setShowBookingModal(false)}
-                  style={styles.closeBtn}
-                >
-                  <Ionicons name="close" size={22} color={Colors.textPrimary} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Party Size */}
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>Party Size</Text>
-                <View style={styles.partySizeRow}>
-                  <TouchableOpacity
-                    style={styles.partySizeBtn}
-                    onPress={() => setPartySize(Math.max(1, partySize - 1))}
-                  >
-                    <Ionicons name="remove" size={20} color={Colors.primary} />
-                  </TouchableOpacity>
-                  <View style={styles.partySizeDisplay}>
-                    <Ionicons name="people-outline" size={20} color={Colors.textPrimary} />
-                    <Text style={styles.partySizeText}>{partySize} people</Text>
+                <View style={styles.detailsCard}>
+                  <View style={styles.detailRow}>
+                    <Ionicons name="people-outline" size={16} color={Colors.primary} />
+                    <Text style={styles.detailText}>Party of {partySize}</Text>
                   </View>
-                  <TouchableOpacity
-                    style={styles.partySizeBtn}
-                    onPress={() => setPartySize(Math.min(12, partySize + 1))}
-                  >
-                    <Ionicons name="add" size={20} color={Colors.primary} />
-                  </TouchableOpacity>
+                  <View style={styles.detailRow}>
+                    <Ionicons name="time-outline" size={16} color={Colors.primary} />
+                    <Text style={styles.detailText}>{selectedTime}</Text>
+                  </View>
                 </View>
-              </View>
-
-              {/* Time Slots */}
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>Available Times</Text>
-                <View style={styles.timeSlotsGrid}>
-                  {selectedRestaurant?.availableSlots.map((slot) => (
-                    <TouchableOpacity
-                      key={slot.time}
-                      style={[
-                        styles.timeSlot,
-                        slot.available === 0 && styles.timeSlotUnavailable,
-                        selectedTime === slot.time && styles.timeSlotSelected,
-                      ]}
-                      onPress={() => slot.available > 0 && setSelectedTime(slot.time)}
-                      disabled={slot.available === 0}
-                    >
-                      <Text style={[
-                        styles.timeSlotText,
-                        selectedTime === slot.time && styles.timeSlotTextSelected,
-                        slot.available === 0 && styles.timeSlotTextUnavailable,
-                      ]}>
-                        {slot.time}
-                      </Text>
-                      {slot.available === 0 ? (
-                        <Text style={styles.timeSlotAvail}>Full</Text>
-                      ) : (
-                        <Text style={[
-                          styles.timeSlotAvail,
-                          selectedTime === slot.time && { color: 'rgba(255,255,255,0.8)' }
-                        ]}>
-                          {slot.available} left
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Special Requests */}
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>Special Requests (optional)</Text>
-                <View style={styles.requestInput}>
-                  <Ionicons name="chatbubble-outline" size={16} color={Colors.textMuted} />
-                  <Text style={styles.requestPlaceholder}>
-                    Anniversary, dietary needs, seating preference...
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.modalFooter}>
-                <View style={styles.bookingSummary}>
-                  <Text style={styles.summaryLabel}>Summary</Text>
-                  <Text style={styles.summaryText}>
-                    {partySize} {partySize === 1 ? 'person' : 'people'}{selectedTime ? ` · ${selectedTime}` : ''}
-                  </Text>
-                </View>
-                <TouchableOpacity style={styles.bookBtn} onPress={handleBook}>
+                <TouchableOpacity style={styles.doneBtn} onPress={closeModal}>
                   <LinearGradient
-                    colors={['#FF6B9D', '#E85585']}
-                    style={styles.bookBtnGradient}
+                    colors={['#D4AF37', '#B8942A']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
+                    style={styles.doneBtnGrad}
                   >
-                    <Text style={styles.bookBtnText}>Confirm Reservation</Text>
+                    <Text style={styles.doneBtnText}>Done</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
-            </ScrollView>
-          )}
-        </View>
+            ) : (
+              <ScrollView
+                style={styles.modalScroll}
+                contentContainerStyle={{ paddingBottom: 60 }}
+              >
+                {/* Modal header image */}
+                <View style={styles.modalImgWrap}>
+                  <Image
+                    source={{ uri: selectedRestaurant.imageUrl }}
+                    style={styles.modalImg}
+                  />
+                  <LinearGradient
+                    colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.4)']}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <TouchableOpacity style={styles.modalClose} onPress={closeModal}>
+                    <Ionicons name="close" size={20} color={Colors.white} />
+                  </TouchableOpacity>
+                  <View style={styles.modalRestInfo}>
+                    <Text style={styles.modalRestName}>{selectedRestaurant.name}</Text>
+                    <View style={styles.modalRestMeta}>
+                      <Ionicons name="star" size={12} color={Colors.primary} />
+                      <Text style={styles.modalRestRating}>{selectedRestaurant.rating}</Text>
+                      <Text style={styles.metaDot}>·</Text>
+                      <Text style={styles.modalRestCuisine}>{selectedRestaurant.cuisine}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.modalBody}>
+                  {/* Party Size */}
+                  <Text style={styles.modalLabel}>Party Size</Text>
+                  <View style={styles.partySizeRow}>
+                    <TouchableOpacity
+                      style={styles.sizeBtn}
+                      onPress={() => setPartySize(Math.max(1, partySize - 1))}
+                    >
+                      <Ionicons name="remove" size={18} color={Colors.primary} />
+                    </TouchableOpacity>
+                    <Text style={styles.partySizeNum}>{partySize}</Text>
+                    <TouchableOpacity
+                      style={styles.sizeBtn}
+                      onPress={() => setPartySize(Math.min(12, partySize + 1))}
+                    >
+                      <Ionicons name="add" size={18} color={Colors.primary} />
+                    </TouchableOpacity>
+                    <Text style={styles.partySizeLabel}>
+                      {partySize === 1 ? 'guest' : 'guests'}
+                    </Text>
+                  </View>
+
+                  {/* Time Slots */}
+                  <Text style={styles.modalLabel}>Select Time</Text>
+                  <View style={styles.timeGrid}>
+                    {selectedRestaurant.availableSlots.map((slot) => (
+                      <TouchableOpacity
+                        key={slot.time}
+                        style={[
+                          styles.timeSlot,
+                          selectedTime === slot.time && styles.timeSlotActive,
+                          slot.available === 0 && styles.timeSlotFull,
+                        ]}
+                        onPress={() => slot.available > 0 && setSelectedTime(slot.time)}
+                        disabled={slot.available === 0}
+                      >
+                        <Text
+                          style={[
+                            styles.timeSlotText,
+                            selectedTime === slot.time && styles.timeSlotTextActive,
+                            slot.available === 0 && styles.timeSlotTextFull,
+                          ]}
+                        >
+                          {slot.time}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.timeSlotAvail,
+                            slot.available === 0 && styles.timeSlotTextFull,
+                          ]}
+                        >
+                          {slot.available > 0 ? `${slot.available} left` : 'Full'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {/* Special Requests */}
+                  <Text style={styles.modalLabel}>Special Requests (Optional)</Text>
+                  <TextInput
+                    style={styles.requestsInput}
+                    placeholder="Allergies, occasion, seating preference..."
+                    placeholderTextColor={Colors.inputPlaceholder}
+                    value={specialRequests}
+                    onChangeText={setSpecialRequests}
+                    multiline
+                    numberOfLines={3}
+                  />
+
+                  {/* Summary */}
+                  <View style={styles.summaryCard}>
+                    <Text style={styles.summaryTitle}>Booking Summary</Text>
+                    <View style={styles.summaryRow}>
+                      <Text style={styles.summaryKey}>Restaurant</Text>
+                      <Text style={styles.summaryVal}>{selectedRestaurant.name}</Text>
+                    </View>
+                    <View style={styles.summaryRow}>
+                      <Text style={styles.summaryKey}>Guests</Text>
+                      <Text style={styles.summaryVal}>{partySize}</Text>
+                    </View>
+                    <View style={styles.summaryRow}>
+                      <Text style={styles.summaryKey}>Time</Text>
+                      <Text style={styles.summaryVal}>{selectedTime || 'Not selected'}</Text>
+                    </View>
+                  </View>
+
+                  {/* Confirm Button */}
+                  <TouchableOpacity onPress={handleBook}>
+                    <LinearGradient
+                      colors={['#D4AF37', '#B8942A']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.confirmBtn}
+                    >
+                      <Ionicons name="checkmark-circle" size={18} color="#0A0A0A" />
+                      <Text style={styles.confirmBtnText}>Confirm Reservation</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            )}
+          </View>
+        )}
       </Modal>
     </View>
   );
 };
 
-const ReservationCard: React.FC<{
-  reservation: Reservation;
-  onCancel?: () => void;
-}> = ({ reservation, onCancel }) => {
-  const statusColors: Record<string, string> = {
-    confirmed: Colors.success,
-    pending: Colors.warning,
-    cancelled: Colors.error,
-    completed: Colors.gray400,
-  };
-
+const ReservationCard = ({
+  res,
+  onCancel,
+}: {
+  res: Reservation;
+  onCancel: (id: string) => void;
+}) => {
+  const sc = STATUS_STYLE[res.status] ?? STATUS_STYLE.pending;
   return (
-    <View style={[styles.reservationCard, Shadow.sm]}>
-      <View style={styles.reservationHeader}>
+    <View style={styles.resCard}>
+      <View style={styles.resHeader}>
         <View>
-          <Text style={styles.reservationName}>{reservation.restaurantName}</Text>
-          <Text style={styles.reservationDetails}>
-            {reservation.date} · {reservation.time} · {reservation.partySize} people
-          </Text>
+          <Text style={styles.resName}>{res.restaurantName}</Text>
+          <View style={styles.resMetaRow}>
+            <Ionicons name="calendar-outline" size={12} color={Colors.textMuted} />
+            <Text style={styles.resMeta}>{res.date}</Text>
+            <Text style={styles.metaDot}>·</Text>
+            <Ionicons name="time-outline" size={12} color={Colors.textMuted} />
+            <Text style={styles.resMeta}>{res.time}</Text>
+            <Text style={styles.metaDot}>·</Text>
+            <Ionicons name="people-outline" size={12} color={Colors.textMuted} />
+            <Text style={styles.resMeta}>{res.partySize}</Text>
+          </View>
         </View>
-        <View style={[
-          styles.reservationStatus,
-          { backgroundColor: statusColors[reservation.status] + '20' }
-        ]}>
-          <Text style={[styles.reservationStatusText, { color: statusColors[reservation.status] }]}>
-            {reservation.status.charAt(0).toUpperCase() + reservation.status.slice(1)}
+        <View style={[styles.resPill, { backgroundColor: sc.bg }]}>
+          <Text style={[styles.resPillText, { color: sc.text }]}>
+            {res.status.charAt(0).toUpperCase() + res.status.slice(1)}
           </Text>
         </View>
       </View>
-      <View style={styles.confirmationRow}>
-        <Ionicons name="checkmark-circle-outline" size={14} color={Colors.success} />
-        <Text style={styles.confirmationCode}>{reservation.confirmationCode}</Text>
+      <View style={styles.resCodeRow}>
+        <Text style={styles.resCodeLabel}>Confirmation: </Text>
+        <Text style={styles.resCode}>{res.confirmationCode}</Text>
       </View>
-      {onCancel && reservation.status === 'confirmed' && (
-        <TouchableOpacity onPress={onCancel} style={styles.cancelResBtn}>
+      {res.status === 'confirmed' && (
+        <TouchableOpacity
+          style={styles.cancelResBtn}
+          onPress={() =>
+            Alert.alert('Cancel Reservation', 'Are you sure?', [
+              { text: 'No', style: 'cancel' },
+              { text: 'Cancel Reservation', style: 'destructive', onPress: () => onCancel(res.id) },
+            ])
+          }
+        >
           <Text style={styles.cancelResBtnText}>Cancel Reservation</Text>
         </TouchableOpacity>
       )}
@@ -342,325 +460,268 @@ const ReservationCard: React.FC<{
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
+  container: { flex: 1, backgroundColor: Colors.background },
   header: {
-    paddingHorizontal: Spacing.base,
-    paddingBottom: 0,
-    backgroundColor: Colors.background,
+    paddingHorizontal: Spacing['2xl'],
+    paddingBottom: Spacing.base,
+    gap: Spacing.md,
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginTop: 2,
-    marginBottom: Spacing.base,
-  },
-  tabsRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.gray100,
-  },
+  headerTitle: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary, paddingTop: Spacing.base },
+  headerSub: { fontSize: 13, color: Colors.textMuted, marginTop: -8 },
+  tabs: { flexDirection: 'row', gap: 10 },
   tab: {
     flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  tabActive: {
-    borderBottomColor: Colors.primary,
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.textMuted,
-  },
-  tabTextActive: {
-    color: Colors.primary,
-  },
-  restaurantsList: {
-    padding: Spacing.base,
-  },
-  bookingsList: {
-    padding: Spacing.base,
-  },
-  emptyBookings: {
-    alignItems: 'center',
-    paddingVertical: Spacing['3xl'],
-    gap: Spacing.md,
-  },
-  emptyEmoji: {
-    fontSize: 48,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  browseBtn: {
-    marginTop: Spacing.sm,
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
-    backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.full,
-  },
-  browseBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.white,
-  },
-  bookingSection: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: Spacing.md,
-  },
-  reservationCard: {
-    backgroundColor: Colors.white,
     borderRadius: BorderRadius.xl,
-    padding: Spacing.base,
-    marginBottom: Spacing.md,
-    gap: Spacing.md,
+    overflow: 'hidden',
+    backgroundColor: Colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: Colors.inputBorder,
   },
-  reservationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: Spacing.md,
-  },
-  reservationName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  reservationDetails: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginTop: 3,
-  },
-  reservationStatus: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-  },
-  reservationStatusText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  confirmationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  confirmationCode: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    fontFamily: 'monospace',
-  },
-  cancelResBtn: {
-    alignSelf: 'flex-start',
-  },
-  cancelResBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.error,
-  },
-  // Modal
-  modal: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    padding: Spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.gray100,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.gray100,
+  tabActive: { borderColor: Colors.primary },
+  tabGrad: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  modalSection: {
-    padding: Spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.gray100,
+  tabText: { fontSize: 13, fontWeight: '600', color: Colors.textMuted, textAlign: 'center', paddingVertical: 10 },
+  tabTextActive: { fontSize: 13, fontWeight: '700', color: '#0A0A0A' },
+  section: { padding: Spacing['2xl'] },
+  restCard: {
+    height: 240,
+    borderRadius: BorderRadius.xl,
+    overflow: 'hidden',
+    marginBottom: 16,
+    backgroundColor: Colors.surfaceAlt,
   },
-  modalSectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: Spacing.md,
-  },
-  partySizeRow: {
+  restImg: { ...StyleSheet.absoluteFillObject },
+  verifiedBadge: {
+    position: 'absolute',
+    top: 14, left: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.gray50,
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.md,
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(212,175,55,0.4)',
   },
-  partySizeBtn: {
-    width: 40,
-    height: 40,
+  verifiedText: { fontSize: 11, color: Colors.primary, fontWeight: '700' },
+  restInfo: {
+    position: 'absolute',
+    bottom: 0, left: 0, right: 0,
+    padding: 16,
+    gap: 8,
+  },
+  restName: { fontSize: 20, fontWeight: '800', color: '#fff' },
+  restMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  ratingText: { fontSize: 12, color: Colors.primary, fontWeight: '700' },
+  reviewCount: { fontSize: 12, color: 'rgba(255,255,255,0.6)' },
+  dot: { color: 'rgba(255,255,255,0.4)', fontSize: 12 },
+  cuisine: { fontSize: 12, color: 'rgba(255,255,255,0.8)' },
+  price: { fontSize: 12, color: 'rgba(255,255,255,0.8)' },
+  distance: { fontSize: 12, color: 'rgba(255,255,255,0.8)' },
+  featureRow: { flexDirection: 'row', gap: 6 },
+  featureTag: {
+    backgroundColor: 'rgba(212,175,55,0.2)',
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+  },
+  featureText: { fontSize: 11, color: Colors.primary, fontWeight: '600' },
+  bookBtn: { borderRadius: BorderRadius.xl, overflow: 'hidden', alignSelf: 'stretch' },
+  bookBtnGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    paddingVertical: 12,
+    borderRadius: BorderRadius.xl,
+  },
+  bookBtnText: { fontSize: 14, fontWeight: '700', color: '#0A0A0A' },
+  groupTitle: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary, marginBottom: Spacing.base },
+  resCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.base,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+    gap: 10,
+  },
+  resHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  resName: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
+  resMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4, flexWrap: 'wrap' },
+  resMeta: { fontSize: 12, color: Colors.textMuted },
+  resPill: {
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+  },
+  resPillText: { fontSize: 11, fontWeight: '700' },
+  resCodeRow: { flexDirection: 'row', alignItems: 'center' },
+  resCodeLabel: { fontSize: 12, color: Colors.textMuted },
+  resCode: { fontSize: 12, fontWeight: '700', color: Colors.primary },
+  cancelResBtn: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 14, paddingVertical: 7,
+    borderRadius: BorderRadius.md,
+    backgroundColor: 'rgba(231,76,60,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(231,76,60,0.3)',
+  },
+  cancelResBtnText: { fontSize: 12, color: Colors.error, fontWeight: '600' },
+  empty: {
+    alignItems: 'center',
+    paddingVertical: 80,
+    gap: 14,
+  },
+  emptyEmoji: { fontSize: 64 },
+  emptyTitle: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary },
+  emptySub: { fontSize: 14, color: Colors.textMuted, textAlign: 'center', lineHeight: 22 },
+  emptyBtn: {
+    marginTop: 8,
+    paddingHorizontal: 28, paddingVertical: 14,
+    borderRadius: BorderRadius.xl,
+    backgroundColor: Colors.secondary,
+  },
+  emptyBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  // Modal
+  modal: { flex: 1, backgroundColor: '#0A0A0A' },
+  modalScroll: { flex: 1 },
+  modalImgWrap: { height: 240, position: 'relative' },
+  modalImg: { width: '100%', height: '100%' },
+  modalClose: {
+    position: 'absolute',
+    top: 16, right: 16,
+    width: 36, height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalRestInfo: {
+    position: 'absolute',
+    bottom: 16, left: 16,
+    gap: 4,
+  },
+  modalRestName: { fontSize: 22, fontWeight: '800', color: '#fff' },
+  modalRestMeta: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  modalRestRating: { fontSize: 13, color: Colors.primary, fontWeight: '700' },
+  metaDot: { color: 'rgba(255,255,255,0.4)', fontSize: 12 },
+  modalRestCuisine: { fontSize: 13, color: 'rgba(255,255,255,0.8)' },
+  modalBody: { padding: Spacing['2xl'], gap: Spacing.xl },
+  modalLabel: { fontSize: 14, fontWeight: '700', color: Colors.textSecondary, marginBottom: -8 },
+  partySizeRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  sizeBtn: {
+    width: 40, height: 40,
     borderRadius: 20,
     backgroundColor: Colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
   },
-  partySizeDisplay: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  partySizeText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  timeSlotsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
+  partySizeNum: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary, minWidth: 30, textAlign: 'center' },
+  partySizeLabel: { fontSize: 14, color: Colors.textMuted },
+  timeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   timeSlot: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.surfaceAlt,
+    borderWidth: 1.5,
+    borderColor: Colors.inputBorder,
+    alignItems: 'center',
+    minWidth: 80,
+  },
+  timeSlotActive: {
+    borderColor: Colors.primary,
+    backgroundColor: 'rgba(212,175,55,0.12)',
+  },
+  timeSlotFull: { opacity: 0.4 },
+  timeSlotText: { fontSize: 13, fontWeight: '700', color: Colors.textSecondary },
+  timeSlotTextActive: { color: Colors.primary },
+  timeSlotTextFull: { color: Colors.textMuted },
+  timeSlotAvail: { fontSize: 10, color: Colors.textMuted, marginTop: 2 },
+  requestsInput: {
+    backgroundColor: Colors.inputBackground,
     borderRadius: BorderRadius.lg,
     borderWidth: 1.5,
-    borderColor: Colors.gray200,
-    backgroundColor: Colors.white,
-    alignItems: 'center',
-    minWidth: 90,
-  },
-  timeSlotUnavailable: {
-    backgroundColor: Colors.gray100,
-    borderColor: Colors.gray200,
-    opacity: 0.5,
-  },
-  timeSlotSelected: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  timeSlotText: {
+    borderColor: Colors.inputBorder,
+    padding: 14,
     fontSize: 14,
-    fontWeight: '700',
     color: Colors.textPrimary,
+    minHeight: 80,
+    textAlignVertical: 'top',
   },
-  timeSlotTextSelected: {
-    color: Colors.white,
-  },
-  timeSlotTextUnavailable: {
-    color: Colors.textMuted,
-  },
-  timeSlotAvail: {
-    fontSize: 10,
-    color: Colors.textMuted,
-    marginTop: 2,
-  },
-  requestInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.gray50,
-    borderRadius: BorderRadius.lg,
+  summaryCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
     padding: Spacing.base,
     borderWidth: 1,
-    borderColor: Colors.gray200,
+    borderColor: Colors.cardBorder,
+    gap: 10,
   },
-  requestPlaceholder: {
-    fontSize: 13,
-    color: Colors.textMuted,
-    flex: 1,
-  },
-  modalFooter: {
-    padding: Spacing.lg,
-    gap: Spacing.md,
-  },
-  bookingSummary: {
+  summaryTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  summaryLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-  },
-  summaryText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  bookBtn: {
+  summaryKey: { fontSize: 13, color: Colors.textMuted },
+  summaryVal: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  confirmBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
     borderRadius: BorderRadius.xl,
-    overflow: 'hidden',
   },
-  bookBtnGradient: {
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bookBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.white,
-    letterSpacing: 0.3,
-  },
-  successView: {
-    flex: 1,
-  },
-  successGradient: {
+  confirmBtnText: { fontSize: 16, fontWeight: '700', color: '#0A0A0A' },
+  // Success
+  successScreen: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.lg,
-    padding: Spacing['3xl'],
+    padding: 40,
+    gap: 16,
   },
-  successEmoji: {
-    fontSize: 72,
+  successEmoji: { fontSize: 80 },
+  successTitle: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary, textAlign: 'center' },
+  successSub: { fontSize: 15, color: Colors.textMuted, textAlign: 'center', lineHeight: 22 },
+  codeCard: {
+    backgroundColor: 'rgba(212,175,55,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(212,175,55,0.3)',
+    borderRadius: BorderRadius.xl,
+    padding: Spacing['2xl'],
+    alignItems: 'center',
+    gap: 6,
+    width: '100%',
   },
-  successTitle: {
-    fontSize: 30,
-    fontWeight: '900',
-    color: Colors.white,
-    textAlign: 'center',
+  codeLabel: { fontSize: 12, color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 1 },
+  codeValue: { fontSize: 28, fontWeight: '900', color: Colors.primary, letterSpacing: 2 },
+  detailsCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.base,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+    gap: 10,
+    width: '100%',
   },
-  successSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.85)',
-    textAlign: 'center',
-    lineHeight: 24,
+  detailRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  detailText: { fontSize: 14, color: Colors.textSecondary },
+  doneBtn: { borderRadius: BorderRadius.xl, overflow: 'hidden', width: '100%' },
+  doneBtnGrad: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderRadius: BorderRadius.xl,
   },
+  doneBtnText: { fontSize: 16, fontWeight: '700', color: '#0A0A0A' },
 });

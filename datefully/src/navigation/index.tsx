@@ -21,23 +21,25 @@ import { PlanScreen } from '../screens/plan/PlanScreen';
 import { ReservationsScreen } from '../screens/reservations/ReservationsScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 
+// Detail Screen (Screen 9)
+import { DateIdeaDetailScreen } from '../screens/detail/DateIdeaDetailScreen';
+
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const TAB_CONFIG = [
-  { name: 'Home', label: 'Home', icon: 'home', iconOutline: 'home-outline' },
-  { name: 'Explore', label: 'Explore', icon: 'compass', iconOutline: 'compass-outline' },
-  { name: 'Plan', label: 'Plan', icon: 'calendar', iconOutline: 'calendar-outline', center: true },
-  { name: 'Reservations', label: 'Reserve', icon: 'restaurant', iconOutline: 'restaurant-outline' },
-  { name: 'Profile', label: 'You', icon: 'person', iconOutline: 'person-outline' },
+  { name: 'Home', label: 'Home', icon: 'home', iconOut: 'home-outline' },
+  { name: 'Explore', label: 'Explore', icon: 'compass', iconOut: 'compass-outline' },
+  { name: 'Plan', label: 'Plan', icon: 'calendar', iconOut: 'calendar-outline', center: true },
+  { name: 'Reservations', label: 'Reserve', icon: 'restaurant', iconOut: 'restaurant-outline' },
+  { name: 'Profile', label: 'You', icon: 'person', iconOut: 'person-outline' },
 ];
 
 const CustomTabBar = ({ state, descriptors, navigation }: any) => {
   return (
-    <View style={tabStyles.container}>
-      <View style={tabStyles.tabBar}>
+    <View style={tabStyles.wrapper}>
+      <View style={tabStyles.bar}>
         {state.routes.map((route: any, index: number) => {
-          const { options } = descriptors[route.key];
           const config = TAB_CONFIG.find((t) => t.name === route.name);
           const isFocused = state.index === index;
           const isCenter = config?.center;
@@ -55,20 +57,25 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
 
           if (isCenter) {
             return (
-              <TouchableOpacity key={route.key} onPress={onPress} style={tabStyles.centerTab}>
+              <TouchableOpacity
+                key={route.key}
+                onPress={onPress}
+                style={tabStyles.centerTab}
+                activeOpacity={0.85}
+              >
                 <LinearGradient
-                  colors={isFocused ? ['#FF6B9D', '#E85585'] : ['#9B59B6', '#6C3483']}
-                  style={tabStyles.centerButton}
+                  colors={isFocused ? ['#D4AF37', '#B8942A'] : ['#8B0000', '#6B0000']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
+                  style={tabStyles.centerBtn}
                 >
                   <Ionicons
-                    name={(isFocused ? config?.icon : config?.iconOutline) as any}
+                    name={(isFocused ? config?.icon : config?.iconOut) as any}
                     size={24}
-                    color={Colors.white}
+                    color={isFocused ? '#0A0A0A' : '#fff'}
                   />
                 </LinearGradient>
-                <Text style={[tabStyles.centerLabel, isFocused && tabStyles.labelActive]}>
+                <Text style={[tabStyles.label, isFocused && tabStyles.labelActive]}>
                   {config?.label}
                 </Text>
               </TouchableOpacity>
@@ -82,9 +89,14 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
               style={tabStyles.tab}
               activeOpacity={0.8}
             >
-              <View style={[tabStyles.iconContainer, isFocused && tabStyles.iconContainerActive]}>
+              <View
+                style={[
+                  tabStyles.iconWrap,
+                  isFocused && tabStyles.iconWrapActive,
+                ]}
+              >
                 <Ionicons
-                  name={(isFocused ? config?.icon : config?.iconOutline) as any}
+                  name={(isFocused ? config?.icon : config?.iconOut) as any}
                   size={22}
                   color={isFocused ? Colors.primary : Colors.tabInactive}
                 />
@@ -100,20 +112,18 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
   );
 };
 
-const MainTabs = () => {
-  return (
-    <Tab.Navigator
-      tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{ headerShown: false }}
-    >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Explore" component={ExploreScreen} />
-      <Tab.Screen name="Plan" component={PlanScreen} />
-      <Tab.Screen name="Reservations" component={ReservationsScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
-    </Tab.Navigator>
-  );
-};
+const MainTabs = () => (
+  <Tab.Navigator
+    tabBar={(props) => <CustomTabBar {...props} />}
+    screenOptions={{ headerShown: false }}
+  >
+    <Tab.Screen name="Home" component={HomeScreen} />
+    <Tab.Screen name="Explore" component={ExploreScreen} />
+    <Tab.Screen name="Plan" component={PlanScreen} />
+    <Tab.Screen name="Reservations" component={ReservationsScreen} />
+    <Tab.Screen name="Profile" component={ProfileScreen} />
+  </Tab.Navigator>
+);
 
 export const AppNavigator = () => {
   const { isAuthenticated } = useAuthStore();
@@ -136,7 +146,14 @@ export const AppNavigator = () => {
             />
           </>
         ) : (
-          <Stack.Screen name="MainTabs" component={MainTabs} />
+          <>
+            <Stack.Screen name="MainTabs" component={MainTabs} />
+            <Stack.Screen
+              name="DateIdeaDetail"
+              component={DateIdeaDetailScreen}
+              options={{ animation: 'slide_from_bottom' }}
+            />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>
@@ -144,7 +161,7 @@ export const AppNavigator = () => {
 };
 
 const tabStyles = StyleSheet.create({
-  container: {
+  wrapper: {
     position: 'absolute',
     bottom: 0,
     left: 0,
@@ -153,13 +170,15 @@ const tabStyles = StyleSheet.create({
     paddingHorizontal: Spacing.base,
     paddingBottom: 20,
   },
-  tabBar: {
+  bar: {
     flexDirection: 'row',
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.surface,
     borderRadius: 28,
     paddingVertical: 8,
     paddingHorizontal: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
     ...Shadow.lg,
   },
   tab: {
@@ -174,17 +193,17 @@ const tabStyles = StyleSheet.create({
     gap: 2,
     marginTop: -24,
   },
-  iconContainer: {
+  iconWrap: {
     width: 44,
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: BorderRadius.lg,
   },
-  iconContainerActive: {
-    backgroundColor: Colors.surfaceAlt,
+  iconWrapActive: {
+    backgroundColor: 'rgba(212,175,55,0.1)',
   },
-  centerButton: {
+  centerBtn: {
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -197,13 +216,5 @@ const tabStyles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.tabInactive,
   },
-  labelActive: {
-    color: Colors.primary,
-  },
-  centerLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: Colors.textMuted,
-    marginTop: 2,
-  },
+  labelActive: { color: Colors.primary },
 });

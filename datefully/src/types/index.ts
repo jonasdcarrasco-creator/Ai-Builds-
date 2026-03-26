@@ -170,6 +170,7 @@ export type RootStackParamList = {
   Signup: undefined;
   Onboarding: undefined;
   MainTabs: undefined;
+  DateIdeaDetail: { idea: DateIdea };
 };
 
 export type MainTabParamList = {

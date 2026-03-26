@@ -7,68 +7,66 @@ import {
   Image,
   Dimensions,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors, Spacing, BorderRadius } from '../../constants';
 import { DateIdea } from '../../types';
-import { Colors, BorderRadius, Spacing, Shadow } from '../../constants';
 import { useAppStore } from '../../store';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH * 0.72;
+const { width: W } = Dimensions.get('window');
 
 interface DateIdeaCardProps {
   idea: DateIdea;
-  onPress: () => void;
-  variant?: 'large' | 'compact' | 'horizontal';
+  variant?: 'large' | 'horizontal' | 'compact';
+  onPress?: () => void;
 }
-
-const PRICE_LABELS: Record<string, string> = {
-  '$': 'Budget',
-  '$$': 'Moderate',
-  '$$$': 'Upscale',
-  '$$$$': 'Luxury',
-};
 
 export const DateIdeaCard: React.FC<DateIdeaCardProps> = ({
   idea,
+  variant = 'horizontal',
   onPress,
-  variant = 'large',
 }) => {
   const { savedIdeas, toggleSaveIdea } = useAppStore();
-  const isSaved = savedIdeas.includes(idea.id);
+  const saved = savedIdeas.includes(idea.id);
 
-  if (variant === 'horizontal') {
+  if (variant === 'large') {
     return (
       <TouchableOpacity
-        style={[styles.horizontal, Shadow.md]}
+        style={styles.large}
+        activeOpacity={0.92}
         onPress={onPress}
-        activeOpacity={0.9}
       >
-        <Image source={{ uri: idea.imageUrl }} style={styles.horizontalImage} />
-        <View style={styles.horizontalContent}>
-          <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>{idea.category}</Text>
+        <Image source={{ uri: idea.imageUrl }} style={styles.largeImg} resizeMode="cover" />
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.9)']}
+          style={StyleSheet.absoluteFill}
+        />
+        {idea.isFeatured && (
+          <View style={styles.featuredBadge}>
+            <Ionicons name="star" size={11} color={Colors.primary} />
+            <Text style={styles.featuredText}>Featured</Text>
           </View>
-          <Text style={styles.horizontalTitle} numberOfLines={2}>{idea.title}</Text>
-          <View style={styles.metaRow}>
-            <Ionicons name="star" size={12} color={Colors.accent} />
-            <Text style={styles.rating}>{idea.rating}</Text>
-            <Text style={styles.metaDot}>·</Text>
-            <Text style={styles.priceLabel}>{PRICE_LABELS[idea.priceRange]}</Text>
-            <Text style={styles.metaDot}>·</Text>
-            <Text style={styles.duration}>{idea.estimatedDuration}</Text>
-          </View>
-        </View>
+        )}
         <TouchableOpacity
-          style={styles.saveButtonSmall}
+          style={styles.heartLarge}
           onPress={() => toggleSaveIdea(idea.id)}
         >
           <Ionicons
-            name={isSaved ? 'heart' : 'heart-outline'}
+            name={saved ? 'heart' : 'heart-outline'}
             size={18}
-            color={isSaved ? Colors.primary : Colors.gray400}
+            color={saved ? Colors.primary : '#fff'}
           />
         </TouchableOpacity>
+        <View style={styles.largeInfo}>
+          <Text style={styles.largePriceRange}>{idea.priceRange}</Text>
+          <Text style={styles.largeTitle} numberOfLines={2}>{idea.title}</Text>
+          <View style={styles.largeMeta}>
+            <Ionicons name="star" size={12} color={Colors.primary} />
+            <Text style={styles.largeRating}>{idea.rating}</Text>
+            <Text style={styles.largeDot}>·</Text>
+            <Text style={styles.largeDur}>{idea.estimatedDuration}</Text>
+          </View>
+        </View>
       </TouchableOpacity>
     );
   }
@@ -76,97 +74,66 @@ export const DateIdeaCard: React.FC<DateIdeaCardProps> = ({
   if (variant === 'compact') {
     return (
       <TouchableOpacity
-        style={[styles.compact, Shadow.sm]}
+        style={styles.compact}
+        activeOpacity={0.92}
         onPress={onPress}
-        activeOpacity={0.9}
       >
-        <Image source={{ uri: idea.imageUrl }} style={styles.compactImage} />
+        <Image source={{ uri: idea.imageUrl }} style={styles.compactImg} resizeMode="cover" />
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.85)']}
-          style={styles.compactGradient}
-        >
-          <View style={styles.compactContent}>
-            <Text style={styles.compactTitle} numberOfLines={2}>{idea.title}</Text>
-            <View style={styles.compactMeta}>
-              <Ionicons name="star" size={11} color={Colors.accent} />
-              <Text style={styles.compactRating}>{idea.rating}</Text>
-              <Text style={styles.compactPrice}>{idea.priceRange}</Text>
-            </View>
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.compactInfo}>
+          <Text style={styles.compactTitle} numberOfLines={2}>{idea.title}</Text>
+          <View style={styles.compactMeta}>
+            <Ionicons name="star" size={10} color={Colors.primary} />
+            <Text style={styles.compactRating}>{idea.rating}</Text>
           </View>
-        </LinearGradient>
+        </View>
         <TouchableOpacity
-          style={styles.saveButtonOverlay}
+          style={styles.heartCompact}
           onPress={() => toggleSaveIdea(idea.id)}
         >
           <Ionicons
-            name={isSaved ? 'heart' : 'heart-outline'}
-            size={16}
-            color={isSaved ? Colors.primary : Colors.white}
+            name={saved ? 'heart' : 'heart-outline'}
+            size={14}
+            color={saved ? Colors.primary : '#fff'}
           />
         </TouchableOpacity>
       </TouchableOpacity>
     );
   }
 
-  // Large card (default)
+  // horizontal (default)
   return (
     <TouchableOpacity
-      style={[styles.large, Shadow.lg]}
+      style={styles.horizontal}
+      activeOpacity={0.9}
       onPress={onPress}
-      activeOpacity={0.92}
     >
-      <Image source={{ uri: idea.imageUrl }} style={styles.largeImage} />
-      <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.9)']}
-        style={styles.largeGradient}
-      >
-        {idea.isFeatured && (
-          <View style={styles.featuredBadge}>
-            <Ionicons name="sparkles" size={10} color={Colors.white} />
-            <Text style={styles.featuredText}>Featured</Text>
+      <Image source={{ uri: idea.imageUrl }} style={styles.horizontalImg} />
+      <View style={styles.horizontalInfo}>
+        <Text style={styles.horizontalTitle} numberOfLines={1}>{idea.title}</Text>
+        <Text style={styles.horizontalDesc} numberOfLines={2}>{idea.description}</Text>
+        <View style={styles.horizontalMeta}>
+          <View style={styles.ratingRow}>
+            <Ionicons name="star" size={11} color={Colors.primary} />
+            <Text style={styles.ratingText}>{idea.rating}</Text>
           </View>
-        )}
-        <View style={styles.largeContent}>
-          <View style={styles.largeTopRow}>
-            <View style={styles.categoryPill}>
-              <Text style={styles.categoryPillText}>{idea.category}</Text>
-            </View>
-            <View style={styles.pricePill}>
-              <Text style={styles.priceText}>{idea.priceRange}</Text>
-            </View>
-          </View>
-          <Text style={styles.largeTitle}>{idea.title}</Text>
-          <Text style={styles.largeDescription} numberOfLines={2}>
-            {idea.description}
-          </Text>
-          <View style={styles.largeMeta}>
-            <View style={styles.ratingRow}>
-              <Ionicons name="star" size={13} color={Colors.accent} />
-              <Text style={styles.largeRating}>{idea.rating}</Text>
-              <Text style={styles.reviewCount}>({idea.reviewCount.toLocaleString()})</Text>
-            </View>
-            {idea.distance && (
-              <View style={styles.distanceRow}>
-                <Ionicons name="location-outline" size={13} color="rgba(255,255,255,0.7)" />
-                <Text style={styles.distanceText}>{idea.distance}</Text>
-              </View>
-            )}
-            <View style={styles.durationRow}>
-              <Ionicons name="time-outline" size={13} color="rgba(255,255,255,0.7)" />
-              <Text style={styles.durationText}>{idea.estimatedDuration}</Text>
-            </View>
-          </View>
+          <Text style={styles.priceDot}>·</Text>
+          <Text style={styles.priceText}>{idea.priceRange}</Text>
+          <Text style={styles.priceDot}>·</Text>
+          <Text style={styles.durText}>{idea.estimatedDuration}</Text>
         </View>
-      </LinearGradient>
+      </View>
       <TouchableOpacity
-        style={styles.saveButton}
+        style={styles.heartHoriz}
         onPress={() => toggleSaveIdea(idea.id)}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <Ionicons
-          name={isSaved ? 'heart' : 'heart-outline'}
-          size={22}
-          color={isSaved ? Colors.primary : Colors.white}
+          name={saved ? 'heart' : 'heart-outline'}
+          size={20}
+          color={saved ? Colors.primary : Colors.textMuted}
         />
       </TouchableOpacity>
     </TouchableOpacity>
@@ -176,126 +143,56 @@ export const DateIdeaCard: React.FC<DateIdeaCardProps> = ({
 const styles = StyleSheet.create({
   // Large
   large: {
-    width: CARD_WIDTH,
-    height: 380,
-    borderRadius: BorderRadius['2xl'],
+    width: W * 0.62,
+    height: 220,
+    borderRadius: BorderRadius.xl,
     overflow: 'hidden',
-    marginRight: Spacing.base,
-    backgroundColor: Colors.gray800,
+    backgroundColor: Colors.surfaceAlt,
+    marginRight: 14,
   },
-  largeImage: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: BorderRadius['2xl'],
-  },
-  largeGradient: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'space-between',
-    padding: Spacing.base,
-  },
+  largeImg: { ...StyleSheet.absoluteFillObject },
   featuredBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-end',
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-    gap: 4,
-  },
-  featuredText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.white,
-    letterSpacing: 0.5,
-  },
-  largeContent: {
-    gap: 6,
-  },
-  largeTopRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 4,
-  },
-  categoryPill: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: BorderRadius.full,
-  },
-  categoryPillText: {
-    fontSize: 11,
-    color: Colors.white,
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
-  pricePill: {
-    backgroundColor: 'rgba(255,107,157,0.8)',
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: BorderRadius.full,
-  },
-  priceText: {
-    fontSize: 11,
-    color: Colors.white,
-    fontWeight: '700',
-  },
-  largeTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: Colors.white,
-    lineHeight: 28,
-  },
-  largeDescription: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.75)',
-    lineHeight: 19,
-  },
-  largeMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 4,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  largeRating: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.white,
-  },
-  reviewCount: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.6)',
-  },
-  distanceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  distanceText: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
-  },
-  durationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  durationText: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
-  },
-  saveButton: {
     position: 'absolute',
-    top: Spacing.base,
-    left: Spacing.base,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    top: 12, left: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(212,175,55,0.2)',
+    paddingHorizontal: 8, paddingVertical: 4,
     borderRadius: BorderRadius.full,
-    padding: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(212,175,55,0.4)',
   },
+  featuredText: { fontSize: 10, color: Colors.primary, fontWeight: '700' },
+  heartLarge: {
+    position: 'absolute',
+    top: 12, right: 12,
+    width: 32, height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  largeInfo: {
+    position: 'absolute',
+    bottom: 0, left: 0, right: 0,
+    padding: 14,
+    gap: 5,
+  },
+  largePriceRange: {
+    alignSelf: 'flex-start',
+    fontSize: 11,
+    color: Colors.primary,
+    fontWeight: '700',
+    backgroundColor: 'rgba(212,175,55,0.15)',
+    paddingHorizontal: 7, paddingVertical: 3,
+    borderRadius: 4,
+  },
+  largeTitle: { fontSize: 16, fontWeight: '800', color: '#fff' },
+  largeMeta: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  largeRating: { fontSize: 12, color: Colors.primary, fontWeight: '700' },
+  largeDot: { color: 'rgba(255,255,255,0.5)', fontSize: 12 },
+  largeDur: { fontSize: 12, color: 'rgba(255,255,255,0.75)' },
 
   // Compact
   compact: {
@@ -303,112 +200,48 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: BorderRadius.xl,
     overflow: 'hidden',
-    marginRight: Spacing.md,
-    backgroundColor: Colors.gray800,
+    backgroundColor: Colors.surfaceAlt,
+    marginRight: 12,
   },
-  compactImage: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  compactGradient: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'flex-end',
-  },
-  compactContent: {
-    padding: Spacing.md,
-  },
-  compactTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.white,
-    marginBottom: 4,
-    lineHeight: 18,
-  },
-  compactMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  compactImg: { ...StyleSheet.absoluteFillObject },
+  compactInfo: {
+    position: 'absolute',
+    bottom: 0, left: 0, right: 0,
+    padding: 12,
     gap: 4,
   },
-  compactRating: {
-    fontSize: 11,
-    color: Colors.white,
-    fontWeight: '600',
-  },
-  compactPrice: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.7)',
-    marginLeft: 4,
-  },
-  saveButtonOverlay: {
+  compactTitle: { fontSize: 13, fontWeight: '700', color: '#fff', lineHeight: 17 },
+  compactMeta: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  compactRating: { fontSize: 11, color: Colors.primary, fontWeight: '700' },
+  heartCompact: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    borderRadius: BorderRadius.full,
-    padding: 6,
+    top: 10, right: 10,
+    width: 28, height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Horizontal
   horizontal: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.surface,
     borderRadius: BorderRadius.xl,
     overflow: 'hidden',
-    marginBottom: Spacing.md,
-    padding: Spacing.md,
-    gap: Spacing.md,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
   },
-  horizontalImage: {
-    width: 80,
-    height: 80,
-    borderRadius: BorderRadius.lg,
-  },
-  horizontalContent: {
-    flex: 1,
-    gap: 4,
-  },
-  categoryBadge: {
-    backgroundColor: Colors.surfaceAlt,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: BorderRadius.full,
-  },
-  categoryText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: Colors.primary,
-    textTransform: 'capitalize',
-  },
-  horizontalTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    lineHeight: 20,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  rating: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-  },
-  metaDot: {
-    fontSize: 10,
-    color: Colors.textMuted,
-  },
-  priceLabel: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  duration: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  saveButtonSmall: {
-    padding: 6,
-  },
+  horizontalImg: { width: 90, height: 90 },
+  horizontalInfo: { flex: 1, padding: 12, gap: 5 },
+  horizontalTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  horizontalDesc: { fontSize: 12, color: Colors.textMuted, lineHeight: 17 },
+  horizontalMeta: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  ratingText: { fontSize: 12, color: Colors.primary, fontWeight: '700' },
+  priceDot: { color: Colors.inputBorder, fontSize: 12 },
+  priceText: { fontSize: 12, color: Colors.textMuted },
+  durText: { fontSize: 12, color: Colors.textMuted },
+  heartHoriz: { padding: 14, alignSelf: 'center' },
 });

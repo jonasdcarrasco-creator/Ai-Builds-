@@ -4,389 +4,374 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Spacing, BorderRadius } from '../../constants';
-import { RELATIONSHIP_TYPES } from '../../constants';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { useAuthStore } from '../../store';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface SignupScreenProps {
   navigation: any;
 }
 
+const RELATIONSHIP_TYPES = [
+  { id: 'single', label: 'Single', emoji: '🦋', desc: 'Flying solo' },
+  { id: 'dating', label: 'Dating', emoji: '💑', desc: 'In a relationship' },
+  { id: 'married', label: 'Married', emoji: '💍', desc: 'Happily wed' },
+  { id: 'friends', label: 'Friends', emoji: '👫', desc: 'Friend dates' },
+];
+
 export const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { setUser, setToken } = useAuthStore();
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [relationshipType, setRelationshipType] = useState('');
   const [partnerName, setPartnerName] = useState('');
-  const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const { setUser } = useAuthStore();
-
   const validateStep1 = () => {
-    const newErrors: Record<string, string> = {};
-    if (!name.trim()) newErrors.name = 'Name is required';
-    if (!email) newErrors.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'Invalid email address';
-    if (!password) newErrors.password = 'Password is required';
-    else if (password.length < 8) newErrors.password = 'Minimum 8 characters required';
-    if (password !== confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const e: Record<string, string> = {};
+    if (!name.trim()) e.name = 'Name is required';
+    if (!email.trim()) e.email = 'Email is required';
+    else if (!/\S+@\S+\.\S+/.test(email)) e.email = 'Enter a valid email';
+    if (!password) e.password = 'Password is required';
+    else if (password.length < 8) e.password = 'Minimum 8 characters';
+    if (password !== confirm) e.confirm = 'Passwords do not match';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const validateStep2 = () => {
+    const e: Record<string, string> = {};
+    if (!relationshipType) e.relationship = 'Please select a relationship type';
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
   const handleNext = () => {
-    if (step === 1 && validateStep1()) {
-      setStep(2);
-    }
+    if (validateStep1()) setStep(2);
   };
 
-  const handleSignup = async () => {
-    if (!relationshipType) {
-      setErrors({ relationshipType: 'Please select a relationship type' });
-      return;
-    }
+  const handleCreate = () => {
+    if (!validateStep2()) return;
     setLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-    setUser({
-      id: Date.now().toString(),
-      name: name.trim(),
-      email,
-      relationshipType: relationshipType as any,
-      partnerName: partnerName || undefined,
-      preferences: {
-        categories: ['romantic', 'foodie'],
-        budgetRange: 'moderate',
-        notificationsEnabled: true,
-        saveHistory: true,
-      },
-      createdAt: new Date().toISOString(),
-    });
-    setLoading(false);
+    setTimeout(() => {
+      setLoading(false);
+      setToken('mock-token');
+      setUser({
+        id: '1',
+        name,
+        email,
+        relationshipType: relationshipType as any,
+        partnerName: partnerName || undefined,
+        location: 'New York, NY',
+        preferences: {
+          categories: ['romantic', 'foodie'],
+          budgetRange: '$$',
+          notificationsEnabled: true,
+          saveHistory: true,
+        },
+        createdAt: new Date().toISOString(),
+      });
+    }, 1500);
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <LinearGradient
-        colors={['#9B59B6', '#6C3483']}
-        style={[styles.header, { paddingTop: insets.top + Spacing.base }]}
-      >
-        <TouchableOpacity style={styles.backBtn} onPress={() => {
-          if (step === 2) setStep(1);
-          else navigation.goBack();
-        }}>
-          <Ionicons name="chevron-back" size={24} color={Colors.white} />
+        colors={['rgba(139,0,0,0.35)', 'transparent']}
+        style={styles.topGlow}
+      />
+
+      {/* Top bar */}
+      <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => (step === 1 ? navigation.goBack() : setStep(1))}
+        >
+          <Ionicons name="arrow-back" size={20} color={Colors.textPrimary} />
         </TouchableOpacity>
 
-        <View style={styles.headerContent}>
-          <Text style={styles.headerEmoji}>✨</Text>
-          <Text style={styles.headerTitle}>
-            {step === 1 ? 'Create Account' : 'About You'}
-          </Text>
-          <Text style={styles.headerSubtitle}>
-            {step === 1
-              ? 'Join thousands planning perfect dates'
-              : 'Help us personalize your experience'}
-          </Text>
-        </View>
-
-        {/* Progress */}
-        <View style={styles.progressRow}>
-          {[1, 2].map((s) => (
-            <View
-              key={s}
-              style={[
-                styles.progressBar,
-                { flex: 1, opacity: s <= step ? 1 : 0.4 },
-              ]}
+        <View style={styles.progressWrap}>
+          <View style={styles.progressTrack}>
+            <LinearGradient
+              colors={['#8B0000', '#D4AF37']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.progressFill, { width: step === 1 ? '50%' : '100%' }]}
             />
-          ))}
+          </View>
+          <Text style={styles.progressLabel}>Step {step} of 2</Text>
         </View>
-      </LinearGradient>
+      </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: insets.bottom + Spacing['2xl'] }
-        ]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
       >
-        {step === 1 ? (
-          <View style={styles.form}>
-            <Input
-              label="Full Name"
-              placeholder="Your first & last name"
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-              leftIcon="person-outline"
-              error={errors.name}
-              required
-            />
-            <Input
-              label="Email Address"
-              placeholder="you@example.com"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              leftIcon="mail-outline"
-              error={errors.email}
-              required
-            />
-            <Input
-              label="Password"
-              placeholder="Minimum 8 characters"
-              value={password}
-              onChangeText={setPassword}
-              isPassword
-              leftIcon="lock-closed-outline"
-              error={errors.password}
-              required
-            />
-            <Input
-              label="Confirm Password"
-              placeholder="Repeat your password"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              isPassword
-              leftIcon="lock-closed-outline"
-              error={errors.confirmPassword}
-              required
-            />
-
-            <Button title="Continue" onPress={handleNext} size="lg" />
-
-            <TouchableOpacity
-              style={styles.signInRow}
-              onPress={() => navigation.navigate('Login')}
+        <ScrollView
+          contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Logo */}
+          <View style={styles.logoRow}>
+            <LinearGradient
+              colors={['#8B0000', '#D4AF37']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.logoCircle}
             >
-              <Text style={styles.signInText}>Already have an account? </Text>
-              <Text style={styles.signInLink}>Sign In</Text>
+              <Ionicons name="heart" size={22} color="#fff" />
+            </LinearGradient>
+            <Text style={styles.appName}>datefully</Text>
+          </View>
+
+          {step === 1 ? (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Create Account</Text>
+              <Text style={styles.cardSub}>Start planning unforgettable moments together</Text>
+
+              <View style={styles.form}>
+                <Input
+                  label="Full Name"
+                  placeholder="Your name"
+                  value={name}
+                  onChangeText={setName}
+                  leftIcon="person-outline"
+                  autoCapitalize="words"
+                  error={errors.name}
+                />
+                <Input
+                  label="Email"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChangeText={setEmail}
+                  leftIcon="mail-outline"
+                  keyboardType="email-address"
+                  error={errors.email}
+                />
+                <Input
+                  label="Password"
+                  placeholder="Minimum 8 characters"
+                  value={password}
+                  onChangeText={setPassword}
+                  leftIcon="lock-closed-outline"
+                  secureTextEntry
+                  error={errors.password}
+                />
+                <Input
+                  label="Confirm Password"
+                  placeholder="Repeat your password"
+                  value={confirm}
+                  onChangeText={setConfirm}
+                  leftIcon="lock-closed-outline"
+                  secureTextEntry
+                  error={errors.confirm}
+                />
+
+                <Button title="Continue" onPress={handleNext} size="lg" />
+              </View>
+            </View>
+          ) : (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>About You</Text>
+              <Text style={styles.cardSub}>Personalize your Datefully experience</Text>
+
+              {errors.relationship ? (
+                <View style={styles.errorBanner}>
+                  <Ionicons name="alert-circle" size={16} color={Colors.error} />
+                  <Text style={styles.errorBannerText}>{errors.relationship}</Text>
+                </View>
+              ) : null}
+
+              <Text style={styles.sectionLabel}>I am currently...</Text>
+
+              <View style={styles.relGrid}>
+                {RELATIONSHIP_TYPES.map((rt) => (
+                  <TouchableOpacity
+                    key={rt.id}
+                    style={[
+                      styles.relCard,
+                      relationshipType === rt.id && styles.relCardActive,
+                    ]}
+                    onPress={() => setRelationshipType(rt.id)}
+                    activeOpacity={0.8}
+                  >
+                    {relationshipType === rt.id && (
+                      <View style={styles.relCheck}>
+                        <Ionicons name="checkmark" size={11} color="#0A0A0A" />
+                      </View>
+                    )}
+                    <Text style={styles.relEmoji}>{rt.emoji}</Text>
+                    <Text
+                      style={[
+                        styles.relLabel,
+                        relationshipType === rt.id && styles.relLabelActive,
+                      ]}
+                    >
+                      {rt.label}
+                    </Text>
+                    <Text style={styles.relDesc}>{rt.desc}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {(relationshipType === 'dating' || relationshipType === 'married') && (
+                <Input
+                  label="Partner's Name"
+                  placeholder="Their first name"
+                  value={partnerName}
+                  onChangeText={setPartnerName}
+                  leftIcon="heart-outline"
+                  autoCapitalize="words"
+                />
+              )}
+
+              <Text style={styles.termsText}>
+                By creating an account you agree to our{' '}
+                <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
+                <Text style={styles.termsLink}>Privacy Policy</Text>
+              </Text>
+
+              <Button
+                title="Create Account"
+                onPress={handleCreate}
+                loading={loading}
+                size="lg"
+              />
+            </View>
+          )}
+
+          <View style={styles.loginRow}>
+            <Text style={styles.loginText}>Already have an account? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+              <Text style={styles.loginLink}>Sign In</Text>
             </TouchableOpacity>
           </View>
-        ) : (
-          <View style={styles.form}>
-            <Text style={styles.sectionTitle}>Relationship Status</Text>
-            <Text style={styles.sectionSubtitle}>
-              This helps us suggest the right date ideas for you.
-            </Text>
-
-            <View style={styles.relationshipGrid}>
-              {RELATIONSHIP_TYPES.map((type) => (
-                <TouchableOpacity
-                  key={type.id}
-                  style={[
-                    styles.relationshipCard,
-                    relationshipType === type.id && styles.relationshipCardActive,
-                  ]}
-                  onPress={() => setRelationshipType(type.id)}
-                >
-                  <Text style={styles.relationshipEmoji}>{type.emoji}</Text>
-                  <Text style={[
-                    styles.relationshipLabel,
-                    relationshipType === type.id && styles.relationshipLabelActive,
-                  ]}>
-                    {type.label}
-                  </Text>
-                  {relationshipType === type.id && (
-                    <View style={styles.selectedCheck}>
-                      <Ionicons name="checkmark-circle" size={16} color={Colors.primary} />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {errors.relationshipType && (
-              <Text style={styles.errorText}>{errors.relationshipType}</Text>
-            )}
-
-            {(relationshipType === 'dating' || relationshipType === 'married') && (
-              <Input
-                label="Partner's Name (optional)"
-                placeholder="What should we call them?"
-                value={partnerName}
-                onChangeText={setPartnerName}
-                leftIcon="heart-outline"
-              />
-            )}
-
-            <View style={styles.termsRow}>
-              <Text style={styles.termsText}>
-                By creating an account, you agree to our{' '}
-                <Text style={styles.termsLink}>Terms of Service</Text>
-                {' '}and{' '}
-                <Text style={styles.termsLink}>Privacy Policy</Text>.
-              </Text>
-            </View>
-
-            <Button
-              title={loading ? 'Creating your account...' : 'Create Account 💕'}
-              onPress={handleSignup}
-              loading={loading}
-              size="lg"
-            />
-          </View>
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
+  container: { flex: 1, backgroundColor: Colors.background },
+  topGlow: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0,
+    height: 200,
+    zIndex: 0,
   },
-  header: {
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: Spacing.base,
-    paddingBottom: Spacing['2xl'],
+    paddingBottom: 8,
+    gap: 14,
+    zIndex: 10,
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 42, height: 42,
+    borderRadius: 21,
+    backgroundColor: Colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.base,
   },
-  headerContent: {
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: Spacing.xl,
-  },
-  headerEmoji: {
-    fontSize: 40,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: Colors.white,
-  },
-  headerSubtitle: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.8)',
-    textAlign: 'center',
-  },
-  progressRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  progressBar: {
+  progressWrap: { flex: 1, gap: 5 },
+  progressTrack: {
     height: 4,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.surfaceAlt,
     borderRadius: 2,
+    overflow: 'hidden',
   },
-  scrollView: {
-    flex: 1,
+  progressFill: { height: '100%', borderRadius: 2 },
+  progressLabel: { fontSize: 12, color: Colors.textMuted },
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: Spacing['2xl'],
+    paddingTop: 16,
+    gap: Spacing['2xl'],
   },
-  scrollContent: {
-    padding: Spacing['2xl'],
-  },
-  form: {
-    gap: 4,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: 4,
-  },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.lg,
-    lineHeight: 20,
-  },
-  relationshipGrid: {
+  logoRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: Spacing.base,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
   },
-  relationshipCard: {
-    width: '47%',
-    backgroundColor: Colors.white,
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.base,
+  logoCircle: {
+    width: 46, height: 46,
+    borderRadius: 23,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  appName: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary },
+  card: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius['2xl'],
+    padding: Spacing['2xl'],
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+    gap: Spacing.lg,
+  },
+  cardTitle: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
+  cardSub: { fontSize: 14, color: Colors.textMuted, lineHeight: 20, marginTop: -8 },
+  form: { gap: Spacing.base },
+  errorBanner: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    borderWidth: 2,
-    borderColor: Colors.gray200,
+    backgroundColor: 'rgba(231,76,60,0.1)',
+    padding: 12,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(231,76,60,0.3)',
+  },
+  errorBannerText: { fontSize: 13, color: Colors.error },
+  sectionLabel: { fontSize: 15, fontWeight: '700', color: Colors.textSecondary },
+  relGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  relCard: {
+    width: '47%',
+    backgroundColor: Colors.surfaceAlt,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.base,
+    borderWidth: 1.5,
+    borderColor: Colors.inputBorder,
+    gap: 4,
     position: 'relative',
   },
-  relationshipCardActive: {
+  relCardActive: {
     borderColor: Colors.primary,
-    backgroundColor: Colors.surfaceAlt,
+    backgroundColor: 'rgba(212,175,55,0.07)',
   },
-  relationshipEmoji: {
-    fontSize: 28,
-  },
-  relationshipLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-    textAlign: 'center',
-  },
-  relationshipLabelActive: {
-    color: Colors.primary,
-  },
-  selectedCheck: {
+  relCheck: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-  },
-  errorText: {
-    fontSize: 12,
-    color: Colors.error,
-    marginTop: -8,
-    marginBottom: Spacing.sm,
-  },
-  termsRow: {
-    marginVertical: Spacing.base,
-  },
-  termsText: {
-    fontSize: 13,
-    color: Colors.textMuted,
-    lineHeight: 20,
-    textAlign: 'center',
-  },
-  termsLink: {
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-  signInRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    top: 8, right: 8,
+    width: 20, height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
-    marginTop: Spacing.lg,
+    justifyContent: 'center',
   },
-  signInText: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-  },
-  signInLink: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
+  relEmoji: { fontSize: 28 },
+  relLabel: { fontSize: 15, fontWeight: '700', color: Colors.textSecondary },
+  relLabelActive: { color: Colors.primary },
+  relDesc: { fontSize: 12, color: Colors.textMuted },
+  termsText: { fontSize: 12, color: Colors.textMuted, lineHeight: 18, textAlign: 'center' },
+  termsLink: { color: Colors.primary, fontWeight: '600' },
+  loginRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  loginText: { fontSize: 14, color: Colors.textMuted },
+  loginLink: { fontSize: 14, fontWeight: '700', color: Colors.primary },
 });

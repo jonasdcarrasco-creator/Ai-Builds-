@@ -11,563 +11,458 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Spacing, BorderRadius, Shadow } from '../../constants';
-import { useAppStore } from '../../store';
-import { DatePlan, DatePlanItem } from '../../types';
-import { MOCK_PLANS } from '../../constants/mockData';
+import { Colors, Spacing, BorderRadius } from '../../constants';
+import { useAppStore, useAuthStore } from '../../store';
+import { DatePlan } from '../../types';
 
 interface PlanScreenProps {
   navigation: any;
 }
 
+const STATUS_STYLE: Record<string, { bg: string; text: string; border: string }> = {
+  upcoming: { bg: 'rgba(212,175,55,0.12)', text: '#D4AF37', border: 'rgba(212,175,55,0.3)' },
+  completed: { bg: 'rgba(46,204,113,0.12)', text: '#2ECC71', border: 'rgba(46,204,113,0.3)' },
+  cancelled: { bg: 'rgba(231,76,60,0.12)', text: '#E74C3C', border: 'rgba(231,76,60,0.3)' },
+};
+
+const TIPS = [
+  { emoji: '🎯', text: 'Book restaurants 2–3 days in advance' },
+  { emoji: '💡', text: 'Have a backup plan for outdoor activities' },
+  { emoji: '💌', text: 'Add personal touches like a handwritten note' },
+  { emoji: '📸', text: 'Capture memories with the Memories feature' },
+];
+
 export const PlanScreen: React.FC<PlanScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { plans, addPlan } = useAppStore();
-  const [showCreate, setShowCreate] = useState(false);
-  const [newPlanTitle, setNewPlanTitle] = useState('');
-  const [newPlanDate, setNewPlanDate] = useState('');
+  const { plans, addPlan, deletePlan } = useAppStore();
+  const [showForm, setShowForm] = useState(false);
+  const [title, setTitle] = useState('');
+  const [date, setDate] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const allPlans = plans.length > 0 ? plans : MOCK_PLANS;
+  const upcoming = plans.filter((p) => p.status === 'upcoming');
+  const past = plans.filter((p) => p.status !== 'upcoming');
 
-  const handleCreatePlan = () => {
-    if (!newPlanTitle.trim()) {
-      Alert.alert('', 'Please enter a title for your date plan.');
-      return;
-    }
-    const plan: DatePlan = {
+  const handleCreate = () => {
+    const e: Record<string, string> = {};
+    if (!title.trim()) e.title = 'Plan name is required';
+    if (!date.trim()) e.date = 'Date is required';
+    setErrors(e);
+    if (Object.keys(e).length > 0) return;
+    addPlan({
       id: Date.now().toString(),
-      title: newPlanTitle.trim(),
-      date: newPlanDate || new Date().toISOString().split('T')[0],
+      title: title.trim(),
+      date: date.trim(),
       items: [],
       status: 'upcoming',
       createdAt: new Date().toISOString(),
-    };
-    addPlan(plan);
-    setNewPlanTitle('');
-    setNewPlanDate('');
-    setShowCreate(false);
+    });
+    setTitle('');
+    setDate('');
+    setShowForm(false);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'upcoming': return Colors.info;
-      case 'completed': return Colors.success;
-      case 'cancelled': return Colors.error;
-      default: return Colors.gray400;
-    }
+  const handleDelete = (id: string) => {
+    Alert.alert('Delete Plan', 'This will permanently remove the plan.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => deletePlan(id) },
+    ]);
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'upcoming': return 'Upcoming';
-      case 'completed': return 'Completed ✓';
-      case 'cancelled': return 'Cancelled';
-      default: return status;
-    }
-  };
-
-  const formatDate = (dateStr: string) => {
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' });
-    } catch {
-      return dateStr;
-    }
-  };
-
-  return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + Spacing.base }]}>
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.headerTitle}>Date Plans</Text>
-            <Text style={styles.headerSubtitle}>
-              {allPlans.length} plan{allPlans.length !== 1 ? 's' : ''} created
+  const PlanCard = ({ plan }: { plan: DatePlan }) => {
+    const sc = STATUS_STYLE[plan.status] ?? STATUS_STYLE.upcoming;
+    return (
+      <View style={styles.planCard}>
+        <View style={styles.planCardTop}>
+          <View style={styles.planCardLeft}>
+            <Text style={styles.planTitle}>{plan.title}</Text>
+            <View style={styles.planDateRow}>
+              <Ionicons name="calendar-outline" size={13} color={Colors.textMuted} />
+              <Text style={styles.planDateText}>{plan.date}</Text>
+            </View>
+          </View>
+          <View style={[styles.statusPill, { backgroundColor: sc.bg, borderColor: sc.border }]}>
+            <Text style={[styles.statusText, { color: sc.text }]}>
+              {plan.status.charAt(0).toUpperCase() + plan.status.slice(1)}
             </Text>
           </View>
+        </View>
+
+        {plan.items.length > 0 ? (
+          <View style={styles.itemsBlock}>
+            {plan.items.slice(0, 3).map((item) => (
+              <View key={item.id} style={styles.itemRow}>
+                <Ionicons
+                  name={item.isCompleted ? 'checkmark-circle' : 'ellipse-outline'}
+                  size={14}
+                  color={item.isCompleted ? Colors.primary : Colors.textMuted}
+                />
+                <Text
+                  style={[styles.itemText, item.isCompleted && styles.itemDone]}
+                  numberOfLines={1}
+                >
+                  {item.title}
+                </Text>
+              </View>
+            ))}
+            {plan.items.length > 3 && (
+              <Text style={styles.moreText}>+{plan.items.length - 3} more</Text>
+            )}
+          </View>
+        ) : (
+          <View style={styles.noItems}>
+            <Text style={styles.noItemsText}>No activities yet — tap Edit to add some</Text>
+          </View>
+        )}
+
+        {plan.totalBudget != null && (
+          <View style={styles.budgetRow}>
+            <Ionicons name="wallet-outline" size={13} color={Colors.primary} />
+            <Text style={styles.budgetText}>
+              Budget:{' '}
+              <Text style={{ color: Colors.primary, fontWeight: '700' }}>
+                ${plan.totalBudget}
+              </Text>
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.actions}>
+          <TouchableOpacity style={styles.actionBtn}>
+            <Ionicons name="pencil-outline" size={14} color={Colors.textMuted} />
+            <Text style={styles.actionLabel}>Edit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn}>
+            <Ionicons name="share-outline" size={14} color={Colors.textMuted} />
+            <Text style={styles.actionLabel}>Share</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn}>
+            <Ionicons name="images-outline" size={14} color={Colors.textMuted} />
+            <Text style={styles.actionLabel}>Memories</Text>
+          </TouchableOpacity>
           <TouchableOpacity
-            style={styles.createBtn}
-            onPress={() => setShowCreate(!showCreate)}
+            style={[styles.actionBtn, styles.deleteAction]}
+            onPress={() => handleDelete(plan.id)}
           >
-            <Ionicons
-              name={showCreate ? 'close' : 'add'}
-              size={22}
-              color={Colors.white}
-            />
+            <Ionicons name="trash-outline" size={14} color={Colors.error} />
           </TouchableOpacity>
         </View>
       </View>
+    );
+  };
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        {/* Create Plan Inline Form */}
-        {showCreate && (
-          <View style={[styles.createForm, Shadow.md]}>
-            <Text style={styles.createFormTitle}>New Date Plan ✨</Text>
-            <View style={styles.inputRow}>
-              <Ionicons name="heart-outline" size={18} color={Colors.textMuted} />
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <LinearGradient
+        colors={['#0A0A0A', '#1C0000', '#0A0A0A']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.headerTitle}>My Plans</Text>
+            <Text style={styles.headerSub}>
+              {plans.length} plan{plans.length !== 1 ? 's' : ''} total
+            </Text>
+          </View>
+          <TouchableOpacity onPress={() => setShowForm(!showForm)}>
+            <LinearGradient
+              colors={['#D4AF37', '#B8942A']}
+              style={styles.addBtnGrad}
+            >
+              <Ionicons name={showForm ? 'close' : 'add'} size={22} color="#0A0A0A" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+
+        {showForm && (
+          <View style={styles.createForm}>
+            <Text style={styles.formHeading}>New Date Plan</Text>
+            <View style={[styles.formRow, errors.title ? styles.formRowErr : null]}>
+              <Ionicons name="bookmark-outline" size={16} color={Colors.textMuted} />
               <TextInput
                 style={styles.formInput}
-                placeholder="Give your date a name..."
-                placeholderTextColor={Colors.textMuted}
-                value={newPlanTitle}
-                onChangeText={setNewPlanTitle}
-                autoFocus
+                placeholder="Plan name"
+                placeholderTextColor={Colors.inputPlaceholder}
+                value={title}
+                onChangeText={setTitle}
               />
             </View>
-            <View style={styles.inputRow}>
-              <Ionicons name="calendar-outline" size={18} color={Colors.textMuted} />
+            {errors.title ? <Text style={styles.errText}>{errors.title}</Text> : null}
+            <View style={[styles.formRow, errors.date ? styles.formRowErr : null]}>
+              <Ionicons name="today-outline" size={16} color={Colors.textMuted} />
               <TextInput
                 style={styles.formInput}
-                placeholder="Date (e.g. April 15, 2026)"
-                placeholderTextColor={Colors.textMuted}
-                value={newPlanDate}
-                onChangeText={setNewPlanDate}
+                placeholder="Date (e.g. Jan 14, 2026)"
+                placeholderTextColor={Colors.inputPlaceholder}
+                value={date}
+                onChangeText={setDate}
               />
             </View>
-            <View style={styles.formBtns}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowCreate(false)}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
+            {errors.date ? <Text style={styles.errText}>{errors.date}</Text> : null}
+            <View style={styles.formActions}>
+              <TouchableOpacity style={styles.formCancel} onPress={() => setShowForm(false)}>
+                <Text style={styles.formCancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.saveBtn} onPress={handleCreatePlan}>
+              <TouchableOpacity style={styles.formCreateWrap} onPress={handleCreate}>
                 <LinearGradient
-                  colors={['#FF6B9D', '#E85585']}
-                  style={styles.saveBtnGradient}
+                  colors={['#D4AF37', '#B8942A']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
+                  style={styles.formCreate}
                 >
-                  <Text style={styles.saveBtnText}>Create Plan</Text>
+                  <Text style={styles.formCreateText}>Create</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
           </View>
         )}
+      </LinearGradient>
 
-        {/* Upcoming Plans */}
-        {allPlans.filter((p) => p.status === 'upcoming').length > 0 && (
-          <>
-            <Text style={styles.sectionLabel}>Upcoming Dates</Text>
-            {allPlans
-              .filter((p) => p.status === 'upcoming')
-              .map((plan) => (
-                <PlanCard
-                  key={plan.id}
-                  plan={plan}
-                  onPress={() => {}}
-                  getStatusColor={getStatusColor}
-                  getStatusLabel={getStatusLabel}
-                  formatDate={formatDate}
-                />
-              ))}
-          </>
-        )}
-
-        {/* Past Plans */}
-        {allPlans.filter((p) => p.status !== 'upcoming').length > 0 && (
-          <>
-            <Text style={[styles.sectionLabel, { marginTop: Spacing.xl }]}>Past Dates</Text>
-            {allPlans
-              .filter((p) => p.status !== 'upcoming')
-              .map((plan) => (
-                <PlanCard
-                  key={plan.id}
-                  plan={plan}
-                  onPress={() => {}}
-                  getStatusColor={getStatusColor}
-                  getStatusLabel={getStatusLabel}
-                  formatDate={formatDate}
-                />
-              ))}
-          </>
-        )}
-
-        {allPlans.length === 0 && !showCreate && (
-          <View style={styles.emptyState}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+      >
+        {plans.length === 0 ? (
+          <View style={styles.empty}>
             <Text style={styles.emptyEmoji}>📅</Text>
-            <Text style={styles.emptyTitle}>No date plans yet</Text>
-            <Text style={styles.emptySubtitle}>
-              Tap the + button to create your first date plan and start building unforgettable memories.
+            <Text style={styles.emptyTitle}>No Plans Yet</Text>
+            <Text style={styles.emptySub}>
+              Create your first date plan to start building unforgettable memories together
             </Text>
-            <TouchableOpacity style={styles.emptyBtn} onPress={() => setShowCreate(true)}>
+            <TouchableOpacity onPress={() => setShowForm(true)}>
               <LinearGradient
-                colors={['#FF6B9D', '#E85585']}
-                style={styles.emptyBtnGradient}
+                colors={['#D4AF37', '#B8942A']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
+                style={styles.emptyBtn}
               >
-                <Ionicons name="add" size={18} color={Colors.white} />
+                <Ionicons name="add" size={18} color="#0A0A0A" />
                 <Text style={styles.emptyBtnText}>Create First Plan</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
+        ) : (
+          <>
+            {upcoming.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.secRow}>
+                  <Text style={styles.sectionTitle}>Upcoming</Text>
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{upcoming.length}</Text>
+                  </View>
+                </View>
+                {upcoming.map((p) => <PlanCard key={p.id} plan={p} />)}
+              </View>
+            )}
+            {past.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.secRow}>
+                  <Text style={styles.sectionTitle}>Past Dates</Text>
+                  <View style={[styles.badge, { backgroundColor: Colors.surfaceAlt }]}>
+                    <Text style={[styles.badgeText, { color: Colors.textMuted }]}>{past.length}</Text>
+                  </View>
+                </View>
+                {past.map((p) => <PlanCard key={p.id} plan={p} />)}
+              </View>
+            )}
+          </>
         )}
 
-        {/* Tips Section */}
-        <View style={styles.tipsSection}>
-          <Text style={styles.tipsSectionTitle}>Planning Tips 💡</Text>
-          {[
-            { icon: '🎯', tip: 'Be specific — the more details, the better the experience.' },
-            { icon: '⏰', tip: 'Book reservations at least 3 days in advance for popular spots.' },
-            { icon: '💰', tip: 'Set a budget early to avoid stress and focus on fun.' },
-            { icon: '📸', tip: 'Designate one activity as the "signature moment" to photograph.' },
-          ].map((t, i) => (
-            <View key={i} style={styles.tipRow}>
-              <Text style={styles.tipIcon}>{t.icon}</Text>
-              <Text style={styles.tipText}>{t.tip}</Text>
-            </View>
-          ))}
+        {/* Tips */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Planning Tips</Text>
+          <View style={styles.tipsCard}>
+            {TIPS.map((t, i) => (
+              <View
+                key={i}
+                style={[styles.tipRow, i < TIPS.length - 1 && styles.tipDivider]}
+              >
+                <Text style={styles.tipEmoji}>{t.emoji}</Text>
+                <Text style={styles.tipText}>{t.text}</Text>
+              </View>
+            ))}
+          </View>
         </View>
       </ScrollView>
     </View>
   );
 };
 
-const PlanCard: React.FC<{
-  plan: DatePlan;
-  onPress: () => void;
-  getStatusColor: (s: string) => string;
-  getStatusLabel: (s: string) => string;
-  formatDate: (d: string) => string;
-}> = ({ plan, onPress, getStatusColor, getStatusLabel, formatDate }) => (
-  <TouchableOpacity style={[styles.planCard, Shadow.md]} onPress={onPress} activeOpacity={0.9}>
-    <LinearGradient
-      colors={['#FF6B9D20', '#9B59B610']}
-      style={styles.planCardGradient}
-    >
-      <View style={styles.planCardHeader}>
-        <View style={styles.planCardLeft}>
-          <Text style={styles.planCardTitle}>{plan.title}</Text>
-          <View style={styles.planCardDate}>
-            <Ionicons name="calendar-outline" size={13} color={Colors.textMuted} />
-            <Text style={styles.planCardDateText}>{formatDate(plan.date)}</Text>
-          </View>
-        </View>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(plan.status) + '20' }]}>
-          <Text style={[styles.statusText, { color: getStatusColor(plan.status) }]}>
-            {getStatusLabel(plan.status)}
-          </Text>
-        </View>
-      </View>
-
-      {plan.items.length > 0 && (
-        <View style={styles.planItems}>
-          {plan.items.slice(0, 3).map((item) => (
-            <View key={item.id} style={styles.planItem}>
-              <View style={[styles.planItemDot, item.isCompleted && styles.planItemDotDone]} />
-              <Text style={[styles.planItemText, item.isCompleted && styles.planItemTextDone]}>
-                {item.time ? `${item.time} · ` : ''}{item.title}
-              </Text>
-            </View>
-          ))}
-          {plan.items.length > 3 && (
-            <Text style={styles.moreItems}>+{plan.items.length - 3} more activities</Text>
-          )}
-        </View>
-      )}
-
-      {plan.totalBudget != null && (
-        <View style={styles.planFooter}>
-          <Ionicons name="cash-outline" size={14} color={Colors.textMuted} />
-          <Text style={styles.planBudget}>
-            Total budget: <Text style={styles.planBudgetAmount}>${plan.totalBudget}</Text>
-          </Text>
-        </View>
-      )}
-
-      <View style={styles.planCardActions}>
-        <TouchableOpacity style={styles.planAction}>
-          <Ionicons name="pencil-outline" size={14} color={Colors.primary} />
-          <Text style={styles.planActionText}>Edit</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.planAction}>
-          <Ionicons name="share-outline" size={14} color={Colors.primary} />
-          <Text style={styles.planActionText}>Share</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.planAction}>
-          <Ionicons name="camera-outline" size={14} color={Colors.primary} />
-          <Text style={styles.planActionText}>Memories</Text>
-        </TouchableOpacity>
-      </View>
-    </LinearGradient>
-  </TouchableOpacity>
-);
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
+  container: { flex: 1, backgroundColor: Colors.background },
   header: {
-    paddingHorizontal: Spacing.base,
-    paddingBottom: Spacing.base,
-    backgroundColor: Colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.gray100,
+    paddingHorizontal: Spacing['2xl'],
+    paddingBottom: Spacing['2xl'],
+    gap: Spacing.lg,
   },
-  headerContent: {
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    paddingTop: Spacing.base,
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
-  createBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.primary,
+  headerTitle: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary },
+  headerSub: { fontSize: 13, color: Colors.textMuted, marginTop: 2 },
+  addBtnGrad: {
+    width: 48, height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
   createForm: {
-    margin: Spacing.base,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.surfaceAlt,
     borderRadius: BorderRadius.xl,
-    padding: Spacing.lg,
+    padding: Spacing.base,
     gap: Spacing.md,
-  },
-  createFormTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    backgroundColor: Colors.gray50,
-    borderRadius: BorderRadius.lg,
-    paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.md,
     borderWidth: 1,
-    borderColor: Colors.gray200,
+    borderColor: Colors.cardBorder,
   },
-  formInput: {
-    flex: 1,
-    fontSize: 15,
-    color: Colors.textPrimary,
-  },
-  formBtns: {
+  formHeading: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  formRow: {
     flexDirection: 'row',
-    gap: Spacing.md,
-    marginTop: Spacing.sm,
-  },
-  cancelBtn: {
-    flex: 1,
-    height: 44,
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: Colors.inputBackground,
     borderRadius: BorderRadius.lg,
+    paddingHorizontal: 14,
+    height: 46,
     borderWidth: 1.5,
-    borderColor: Colors.gray200,
+    borderColor: Colors.inputBorder,
   },
-  cancelBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-  },
-  saveBtn: {
-    flex: 2,
+  formRowErr: { borderColor: Colors.error },
+  formInput: { flex: 1, fontSize: 14, color: Colors.textPrimary },
+  errText: { fontSize: 11, color: Colors.error, marginLeft: 4, marginTop: -6 },
+  formActions: { flexDirection: 'row', gap: 10 },
+  formCancel: {
+    flex: 1, height: 44,
     borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
+    backgroundColor: Colors.inputBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.inputBorder,
   },
-  saveBtnGradient: {
+  formCancelText: { fontSize: 14, fontWeight: '600', color: Colors.textMuted },
+  formCreateWrap: { flex: 1.5, borderRadius: BorderRadius.lg, overflow: 'hidden' },
+  formCreate: {
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: BorderRadius.lg,
   },
-  saveBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.white,
-  },
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.textSecondary,
-    paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.md,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  planCard: {
-    marginHorizontal: Spacing.base,
+  formCreateText: { fontSize: 14, fontWeight: '700', color: '#0A0A0A' },
+  section: { paddingHorizontal: Spacing['2xl'], paddingTop: Spacing['2xl'] },
+  secRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     marginBottom: Spacing.base,
-    borderRadius: BorderRadius.xl,
-    overflow: 'hidden',
-    backgroundColor: Colors.white,
   },
-  planCardGradient: {
-    padding: Spacing.lg,
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary },
+  badge: {
+    backgroundColor: Colors.secondary,
+    width: 22, height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  planCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.base,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
     gap: Spacing.md,
   },
-  planCardHeader: {
+  planCardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: Spacing.md,
   },
-  planCardLeft: {
-    flex: 1,
-    gap: 6,
-  },
-  planCardTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-  },
-  planCardDate: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  planCardDateText: {
-    fontSize: 13,
-    color: Colors.textMuted,
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+  planCardLeft: { flex: 1, gap: 4 },
+  planTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
+  planDateRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  planDateText: { fontSize: 13, color: Colors.textMuted },
+  statusPill: {
+    paddingHorizontal: 10, paddingVertical: 4,
     borderRadius: BorderRadius.full,
+    borderWidth: 1,
   },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '700',
+  statusText: { fontSize: 11, fontWeight: '700' },
+  itemsBlock: { gap: 6 },
+  itemRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  itemText: { flex: 1, fontSize: 13, color: Colors.textSecondary },
+  itemDone: { textDecorationLine: 'line-through', color: Colors.textMuted },
+  moreText: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
+  noItems: {
+    backgroundColor: Colors.surfaceAlt,
+    borderRadius: BorderRadius.md,
+    padding: 12,
+    alignItems: 'center',
   },
-  planItems: {
-    gap: 6,
-    paddingLeft: 4,
-  },
-  planItem: {
+  noItemsText: { fontSize: 12, color: Colors.textMuted, fontStyle: 'italic' },
+  budgetRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    backgroundColor: 'rgba(212,175,55,0.07)',
+    padding: 10,
+    borderRadius: BorderRadius.md,
   },
-  planItemDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.primary,
-  },
-  planItemDotDone: {
-    backgroundColor: Colors.success,
-  },
-  planItemText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    flex: 1,
-  },
-  planItemTextDone: {
-    textDecorationLine: 'line-through',
-    color: Colors.textMuted,
-  },
-  moreItems: {
-    fontSize: 12,
-    color: Colors.primary,
-    fontWeight: '600',
-    marginLeft: 14,
-  },
-  planFooter: {
+  budgetText: { fontSize: 13, color: Colors.textSecondary },
+  actions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingTop: Spacing.sm,
+    gap: 8,
+    paddingTop: 4,
     borderTopWidth: 1,
-    borderTopColor: Colors.gray100,
+    borderTopColor: Colors.inputBorder,
   },
-  planBudget: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-  },
-  planBudgetAmount: {
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  planCardActions: {
-    flexDirection: 'row',
-    gap: Spacing.xl,
-    paddingTop: Spacing.sm,
-  },
-  planAction: {
+  actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.surfaceAlt,
   },
-  planActionText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.primary,
-  },
-  emptyState: {
+  deleteAction: { marginLeft: 'auto', backgroundColor: 'rgba(231,76,60,0.1)' },
+  actionLabel: { fontSize: 12, color: Colors.textMuted, fontWeight: '600' },
+  empty: {
     alignItems: 'center',
-    padding: Spacing['3xl'],
-    gap: Spacing.md,
+    paddingVertical: 80,
+    paddingHorizontal: 40,
+    gap: 14,
   },
-  emptyEmoji: {
-    fontSize: 56,
-  },
-  emptyTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
+  emptyEmoji: { fontSize: 64 },
+  emptyTitle: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary },
+  emptySub: { fontSize: 14, color: Colors.textMuted, textAlign: 'center', lineHeight: 22 },
   emptyBtn: {
-    marginTop: Spacing.sm,
-    borderRadius: BorderRadius.xl,
-    overflow: 'hidden',
-  },
-  emptyBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
-  },
-  emptyBtnText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.white,
-  },
-  tipsSection: {
-    margin: Spacing.base,
-    backgroundColor: Colors.white,
+    paddingHorizontal: 28, paddingVertical: 14,
     borderRadius: BorderRadius.xl,
-    padding: Spacing.lg,
-    gap: Spacing.md,
-    marginTop: Spacing.xl,
+    marginTop: 8,
   },
-  tipsSectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: Spacing.sm,
+  emptyBtnText: { fontSize: 15, fontWeight: '700', color: '#0A0A0A' },
+  tipsCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+    overflow: 'hidden',
   },
   tipRow: {
     flexDirection: 'row',
-    gap: Spacing.md,
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    gap: 14,
+    padding: 16,
   },
-  tipIcon: {
-    fontSize: 18,
-  },
-  tipText: {
-    flex: 1,
-    fontSize: 13,
-    color: Colors.textSecondary,
-    lineHeight: 20,
-  },
+  tipDivider: { borderBottomWidth: 1, borderBottomColor: Colors.inputBorder },
+  tipEmoji: { fontSize: 22 },
+  tipText: { flex: 1, fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
 });

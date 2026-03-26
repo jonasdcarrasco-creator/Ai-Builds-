@@ -6,310 +6,183 @@ import {
   TouchableOpacity,
   Image,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors, Spacing, BorderRadius } from '../../constants';
 import { Restaurant } from '../../types';
-import { Colors, BorderRadius, Spacing, Shadow } from '../../constants';
 
 interface RestaurantCardProps {
   restaurant: Restaurant;
-  onPress: () => void;
-  variant?: 'default' | 'compact';
+  onPress?: () => void;
+  onBook?: () => void;
+  variant?: 'full' | 'compact';
 }
 
-const PRICE_MAP: Record<string, string> = {
-  '$': '~$15',
-  '$$': '~$40',
-  '$$$': '~$80',
-  '$$$$': '$120+',
-};
-
 export const RestaurantCard: React.FC<RestaurantCardProps> = ({
-  restaurant,
+  restaurant: r,
   onPress,
-  variant = 'default',
+  onBook,
+  variant = 'compact',
 }) => {
-  if (variant === 'compact') {
+  if (variant === 'full') {
     return (
       <TouchableOpacity
-        style={[styles.compact, Shadow.sm]}
+        style={styles.full}
+        activeOpacity={0.92}
         onPress={onPress}
-        activeOpacity={0.9}
       >
-        <Image source={{ uri: restaurant.imageUrl }} style={styles.compactImage} />
-        <View style={styles.compactContent}>
-          <Text style={styles.compactName} numberOfLines={1}>{restaurant.name}</Text>
-          <Text style={styles.compactCuisine}>{restaurant.cuisine}</Text>
-          <View style={styles.compactMeta}>
-            <Ionicons name="star" size={11} color={Colors.accent} />
-            <Text style={styles.compactRating}>{restaurant.rating}</Text>
-            <Text style={styles.compactDot}>·</Text>
-            <Text style={styles.compactPrice}>{restaurant.priceRange}</Text>
-            <Text style={styles.compactDot}>·</Text>
-            <Text style={styles.compactDistance}>{restaurant.distance}</Text>
+        <Image source={{ uri: r.imageUrl }} style={styles.fullImg} resizeMode="cover" />
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.85)']}
+          style={StyleSheet.absoluteFill}
+        />
+        {r.isVerified && (
+          <View style={styles.verifiedBadge}>
+            <Ionicons name="checkmark-circle" size={12} color={Colors.primary} />
+            <Text style={styles.verifiedText}>Verified</Text>
           </View>
-          <View style={[
-            styles.openBadge,
-            { backgroundColor: restaurant.isOpen ? '#D1FAE5' : '#FEE2E2' }
-          ]}>
-            <View style={[
-              styles.openDot,
-              { backgroundColor: restaurant.isOpen ? Colors.success : Colors.error }
-            ]} />
-            <Text style={[
-              styles.openText,
-              { color: restaurant.isOpen ? '#065F46' : '#991B1B' }
-            ]}>
-              {restaurant.isOpen ? 'Open now' : 'Closed'}
-            </Text>
+        )}
+        <View style={styles.fullInfo}>
+          <Text style={styles.fullName}>{r.name}</Text>
+          <View style={styles.metaRow}>
+            <View style={styles.ratingRow}>
+              <Ionicons name="star" size={12} color={Colors.primary} />
+              <Text style={styles.ratingText}>{r.rating}</Text>
+            </View>
+            <Text style={styles.dot}>·</Text>
+            <Text style={styles.cuisine}>{r.cuisine}</Text>
+            <Text style={styles.dot}>·</Text>
+            <Text style={styles.price}>{r.priceRange}</Text>
+            {r.distance && (
+              <>
+                <Text style={styles.dot}>·</Text>
+                <Text style={styles.distance}>{r.distance}</Text>
+              </>
+            )}
           </View>
+          {onBook && (
+            <TouchableOpacity onPress={onBook}>
+              <LinearGradient
+                colors={['#D4AF37', '#B8942A']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.bookBtn}
+              >
+                <Ionicons name="calendar-outline" size={14} color="#0A0A0A" />
+                <Text style={styles.bookBtnText}>Reserve</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
         </View>
       </TouchableOpacity>
     );
   }
 
+  // compact
   return (
     <TouchableOpacity
-      style={[styles.card, Shadow.md]}
-      onPress={onPress}
+      style={styles.compact}
       activeOpacity={0.9}
+      onPress={onPress}
     >
-      <Image source={{ uri: restaurant.imageUrl }} style={styles.image} />
-      {restaurant.isVerified && (
-        <View style={styles.verifiedBadge}>
-          <Ionicons name="checkmark-circle" size={14} color={Colors.white} />
-          <Text style={styles.verifiedText}>Verified</Text>
-        </View>
-      )}
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.name}>{restaurant.name}</Text>
-            <Text style={styles.cuisine}>{restaurant.cuisine}</Text>
+      <Image source={{ uri: r.imageUrl }} style={styles.compactImg} />
+      <View style={styles.compactInfo}>
+        <Text style={styles.compactName} numberOfLines={1}>{r.name}</Text>
+        <Text style={styles.compactCuisine}>{r.cuisine}</Text>
+        <View style={styles.metaRow}>
+          <View style={styles.ratingRow}>
+            <Ionicons name="star" size={10} color={Colors.primary} />
+            <Text style={[styles.ratingText, { fontSize: 11 }]}>{r.rating}</Text>
           </View>
-          <View style={styles.headerRight}>
-            <View style={styles.ratingBadge}>
-              <Ionicons name="star" size={13} color={Colors.accent} />
-              <Text style={styles.ratingText}>{restaurant.rating}</Text>
-            </View>
-            <Text style={styles.reviewCount}>
-              {restaurant.reviewCount.toLocaleString()} reviews
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.ambianceRow}>
-          {restaurant.ambiance.slice(0, 3).map((tag) => (
-            <View key={tag} style={styles.tag}>
-              <Text style={styles.tagText}>{tag}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.footer}>
-          <View style={styles.footerLeft}>
-            <View style={styles.infoItem}>
-              <Ionicons name="location-outline" size={13} color={Colors.textMuted} />
-              <Text style={styles.infoText}>{restaurant.distance}</Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Ionicons name="cash-outline" size={13} color={Colors.textMuted} />
-              <Text style={styles.infoText}>
-                {restaurant.priceRange} · {PRICE_MAP[restaurant.priceRange] || 'per person'}
-              </Text>
-            </View>
-          </View>
-          <View style={[
-            styles.openBadge,
-            { backgroundColor: restaurant.isOpen ? '#D1FAE5' : '#FEE2E2' }
-          ]}>
-            <View style={[
-              styles.openDot,
-              { backgroundColor: restaurant.isOpen ? Colors.success : Colors.error }
-            ]} />
-            <Text style={[
-              styles.openText,
-              { color: restaurant.isOpen ? '#065F46' : '#991B1B' }
-            ]}>
-              {restaurant.isOpen ? 'Open' : 'Closed'}
-            </Text>
-          </View>
+          <Text style={styles.dot}>·</Text>
+          <Text style={[styles.price, { fontSize: 11 }]}>{r.priceRange}</Text>
+          {r.distance && (
+            <>
+              <Text style={styles.dot}>·</Text>
+              <Text style={[styles.distance, { fontSize: 11 }]}>{r.distance}</Text>
+            </>
+          )}
         </View>
       </View>
+      {onBook && (
+        <TouchableOpacity
+          style={styles.compactBookBtn}
+          onPress={onBook}
+        >
+          <Text style={styles.compactBookText}>Reserve</Text>
+        </TouchableOpacity>
+      )}
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.white,
+  // Full variant
+  full: {
+    height: 240,
     borderRadius: BorderRadius.xl,
     overflow: 'hidden',
-    marginBottom: Spacing.base,
+    marginBottom: 16,
+    backgroundColor: Colors.surfaceAlt,
   },
-  image: {
-    width: '100%',
-    height: 180,
-  },
+  fullImg: { ...StyleSheet.absoluteFillObject },
   verifiedBadge: {
     position: 'absolute',
-    top: 12,
-    right: 12,
+    top: 12, left: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 10, paddingVertical: 5,
     borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(212,175,55,0.4)',
   },
-  verifiedText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.white,
-  },
-  content: {
-    padding: Spacing.base,
-    gap: 10,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  headerLeft: {
-    flex: 1,
-    gap: 3,
-  },
-  headerRight: {
-    alignItems: 'flex-end',
-    gap: 2,
-  },
-  name: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  cuisine: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-  },
-  ratingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: '#FFF9E6',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: BorderRadius.full,
-  },
-  ratingText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.accent,
-  },
-  reviewCount: {
-    fontSize: 11,
-    color: Colors.textMuted,
-  },
-  ambianceRow: {
-    flexDirection: 'row',
+  verifiedText: { fontSize: 11, color: Colors.primary, fontWeight: '700' },
+  fullInfo: {
+    position: 'absolute',
+    bottom: 0, left: 0, right: 0,
+    padding: 16,
     gap: 8,
   },
-  tag: {
-    backgroundColor: Colors.surfaceAlt,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-  },
-  tagText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: Colors.primary,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  footerLeft: {
-    gap: 4,
-  },
-  infoItem: {
+  fullName: { fontSize: 20, fontWeight: '800', color: '#fff' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  ratingText: { fontSize: 12, color: Colors.primary, fontWeight: '700' },
+  dot: { color: 'rgba(255,255,255,0.45)', fontSize: 12 },
+  cuisine: { fontSize: 12, color: 'rgba(255,255,255,0.8)' },
+  price: { fontSize: 12, color: 'rgba(255,255,255,0.8)' },
+  distance: { fontSize: 12, color: 'rgba(255,255,255,0.8)' },
+  bookBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 11,
+    borderRadius: BorderRadius.lg,
   },
-  infoText: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  openBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-  },
-  openDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  openText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
+  bookBtnText: { fontSize: 14, fontWeight: '700', color: '#0A0A0A' },
 
-  // Compact
+  // Compact variant
   compact: {
     flexDirection: 'row',
-    backgroundColor: Colors.white,
-    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
     overflow: 'hidden',
-    marginBottom: Spacing.sm,
-    padding: Spacing.sm,
-    gap: Spacing.md,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
     alignItems: 'center',
   },
-  compactImage: {
-    width: 72,
-    height: 72,
+  compactImg: { width: 80, height: 80 },
+  compactInfo: { flex: 1, padding: 12, gap: 4 },
+  compactName: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  compactCuisine: { fontSize: 12, color: Colors.textMuted },
+  compactBookBtn: {
+    marginRight: 12,
+    paddingHorizontal: 14, paddingVertical: 8,
     borderRadius: BorderRadius.md,
+    backgroundColor: Colors.secondary,
   },
-  compactContent: {
-    flex: 1,
-    gap: 3,
-  },
-  compactName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  compactCuisine: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  compactMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  compactRating: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-  },
-  compactDot: {
-    color: Colors.textMuted,
-    fontSize: 10,
-  },
-  compactPrice: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  compactDistance: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
+  compactBookText: { fontSize: 12, fontWeight: '700', color: '#fff' },
 });

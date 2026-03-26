@@ -5,486 +5,399 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   Switch,
-  Dimensions,
+  Alert,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Spacing, BorderRadius, Shadow } from '../../constants';
+import { Colors, Spacing, BorderRadius } from '../../constants';
 import { useAuthStore, useAppStore } from '../../store';
 import { MOCK_DATE_IDEAS } from '../../constants/mockData';
-import { DateIdeaCard } from '../../components/cards/DateIdeaCard';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface ProfileScreenProps {
   navigation: any;
 }
 
+type ProfileTab = 'saved' | 'memories';
+
+const REL_ICONS: Record<string, string> = {
+  single: '🦋',
+  dating: '💑',
+  married: '💍',
+  friends: '👫',
+};
+
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuthStore();
-  const { savedIdeas, plans, reservations } = useAppStore();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [saveHistory, setSaveHistory] = useState(true);
-  const [activeTab, setActiveTab] = useState<'saved' | 'memories'>('saved');
+  const { savedIdeas, plans, reservations, toggleSaveIdea } = useAppStore();
 
-  const savedIdeaObjects = MOCK_DATE_IDEAS.filter((idea) => savedIdeas.includes(idea.id));
-  const completedPlans = plans.filter((p) => p.status === 'completed').length;
+  const [activeTab, setActiveTab] = useState<ProfileTab>('saved');
+  const [notifs, setNotifs] = useState(user?.preferences.notificationsEnabled ?? true);
+  const [saveHistory, setSaveHistory] = useState(user?.preferences.saveHistory ?? true);
+
+  const initials = user?.name
+    ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'ME';
+
+  const savedDateIdeas = MOCK_DATE_IDEAS.filter((d) => savedIdeas.includes(d.id));
+  const completedDates = plans.filter((p) => p.status === 'completed').length;
 
   const handleLogout = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign Out', style: 'destructive', onPress: logout },
+    ]);
+  };
+
+  const SETTINGS_SECTIONS = [
+    {
+      title: 'Preferences',
+      items: [
         {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: logout,
+          icon: 'notifications-outline',
+          label: 'Push Notifications',
+          toggle: true,
+          value: notifs,
+          onChange: setNotifs,
         },
-      ]
-    );
-  };
-
-  const getRelationshipLabel = (type: string) => {
-    const map: Record<string, string> = {
-      single: '🦋 Flying Solo',
-      dating: '💑 Dating',
-      married: '💍 Married',
-      friends: '👫 Friends',
-    };
-    return map[type] || type;
-  };
-
-  const stats = [
-    { label: 'Saved', value: savedIdeas.length, icon: 'heart', color: Colors.primary },
-    { label: 'Plans', value: plans.length, icon: 'calendar', color: Colors.info },
-    { label: 'Bookings', value: reservations.length, icon: 'restaurant', color: Colors.secondary },
-    { label: 'Dates', value: completedPlans, icon: 'star', color: Colors.accent },
+        {
+          icon: 'time-outline',
+          label: 'Save Date History',
+          toggle: true,
+          value: saveHistory,
+          onChange: setSaveHistory,
+        },
+      ],
+    },
+    {
+      title: 'Account',
+      items: [
+        { icon: 'location-outline', label: 'Location Services', chevron: true },
+        { icon: 'pencil-outline', label: 'Edit Profile', chevron: true },
+        { icon: 'shield-outline', label: 'Privacy & Security', chevron: true },
+      ],
+    },
+    {
+      title: 'Support',
+      items: [
+        { icon: 'help-circle-outline', label: 'Help & Support', chevron: true },
+        { icon: 'star-outline', label: 'Rate Datefully', chevron: true },
+      ],
+    },
   ];
 
   return (
-    <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        {/* Hero Profile Header */}
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+      >
+        {/* Hero Header */}
         <LinearGradient
-          colors={['#9B59B6', '#FF6B9D']}
+          colors={['#0A0A0A', '#2D0000', '#0A0A0A']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[styles.hero, { paddingTop: insets.top + Spacing.base }]}
+          style={styles.hero}
         >
-          <View style={styles.heroTop}>
-            <TouchableOpacity>
-              <Ionicons name="settings-outline" size={22} color={Colors.white} />
-            </TouchableOpacity>
-          </View>
-
           {/* Avatar */}
-          <View style={styles.avatarContainer}>
-            <LinearGradient
-              colors={['rgba(255,255,255,0.4)', 'rgba(255,255,255,0.2)']}
-              style={styles.avatar}
-            >
-              <Text style={styles.avatarInitials}>
-                {user?.name?.split(' ').map((n) => n[0]).join('').slice(0, 2)}
-              </Text>
-            </LinearGradient>
-            <TouchableOpacity style={styles.avatarEdit}>
-              <Ionicons name="camera" size={14} color={Colors.white} />
-            </TouchableOpacity>
-          </View>
+          <LinearGradient
+            colors={['#8B0000', '#D4AF37']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.avatar}
+          >
+            <Text style={styles.avatarText}>{initials}</Text>
+          </LinearGradient>
 
-          <Text style={styles.heroName}>{user?.name}</Text>
-          <Text style={styles.heroEmail}>{user?.email}</Text>
-          <View style={styles.heroBadge}>
-            <Text style={styles.heroBadgeText}>{getRelationshipLabel(user?.relationshipType || '')}</Text>
-          </View>
-          {user?.location && (
-            <View style={styles.heroLocation}>
-              <Ionicons name="location-outline" size={13} color="rgba(255,255,255,0.8)" />
-              <Text style={styles.heroLocationText}>{user.location}</Text>
+          <Text style={styles.userName}>{user?.name ?? 'Your Name'}</Text>
+          <Text style={styles.userEmail}>{user?.email ?? 'your@email.com'}</Text>
+
+          {/* Relationship badge */}
+          {user?.relationshipType && (
+            <View style={styles.relBadge}>
+              <Text style={styles.relEmoji}>{REL_ICONS[user.relationshipType]}</Text>
+              <Text style={styles.relText}>
+                {user.relationshipType.charAt(0).toUpperCase() + user.relationshipType.slice(1)}
+                {user.partnerName ? ` · ${user.partnerName}` : ''}
+              </Text>
             </View>
           )}
+
+          {user?.location && (
+            <View style={styles.locationRow}>
+              <Ionicons name="location-outline" size={13} color={Colors.textMuted} />
+              <Text style={styles.locationText}>{user.location}</Text>
+            </View>
+          )}
+
+          {/* Stats */}
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNum}>{savedIdeas.length}</Text>
+              <Text style={styles.statLabel}>Saved</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNum}>{plans.length}</Text>
+              <Text style={styles.statLabel}>Plans</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNum}>{reservations.length}</Text>
+              <Text style={styles.statLabel}>Bookings</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNum}>{completedDates}</Text>
+              <Text style={styles.statLabel}>Dates</Text>
+            </View>
+          </View>
         </LinearGradient>
 
-        {/* Stats Row */}
-        <View style={[styles.statsRow, Shadow.md]}>
-          {stats.map((stat) => (
-            <View key={stat.label} style={styles.statItem}>
-              <View style={[styles.statIcon, { backgroundColor: stat.color + '20' }]}>
-                <Ionicons name={stat.icon as any} size={16} color={stat.color} />
-              </View>
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Partner Info */}
-        {(user?.relationshipType === 'dating' || user?.relationshipType === 'married') && user?.partnerName && (
-          <View style={[styles.partnerCard, Shadow.sm]}>
+        {/* Partner card */}
+        {user?.partnerName && (
+          <View style={styles.partnerCard}>
             <View style={styles.partnerLeft}>
               <LinearGradient
-                colors={['#FF6B9D', '#E85585']}
+                colors={['#8B0000', '#D4AF37']}
                 style={styles.partnerAvatar}
               >
-                <Text style={styles.partnerInitial}>{user.partnerName[0]}</Text>
+                <Text style={styles.partnerAvatarText}>
+                  {user.partnerName[0].toUpperCase()}
+                </Text>
               </LinearGradient>
               <View>
-                <Text style={styles.partnerLabel}>Your Partner</Text>
                 <Text style={styles.partnerName}>{user.partnerName}</Text>
+                <Text style={styles.partnerSub}>Your partner</Text>
               </View>
             </View>
             <TouchableOpacity style={styles.inviteBtn}>
-              <Text style={styles.inviteBtnText}>Invite to Datefully</Text>
+              <Text style={styles.inviteBtnText}>Invite</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        {/* Tabs: Saved / Memories */}
-        <View style={styles.tabsRow}>
-          <TouchableOpacity
-            style={[styles.profileTab, activeTab === 'saved' && styles.profileTabActive]}
-            onPress={() => setActiveTab('saved')}
-          >
-            <Ionicons
-              name={activeTab === 'saved' ? 'heart' : 'heart-outline'}
-              size={16}
-              color={activeTab === 'saved' ? Colors.primary : Colors.textMuted}
-            />
-            <Text style={[styles.profileTabText, activeTab === 'saved' && styles.profileTabTextActive]}>
-              Saved ({savedIdeas.length})
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.profileTab, activeTab === 'memories' && styles.profileTabActive]}
-            onPress={() => setActiveTab('memories')}
-          >
-            <Ionicons
-              name={activeTab === 'memories' ? 'images' : 'images-outline'}
-              size={16}
-              color={activeTab === 'memories' ? Colors.primary : Colors.textMuted}
-            />
-            <Text style={[styles.profileTabText, activeTab === 'memories' && styles.profileTabTextActive]}>
-              Memories
-            </Text>
-          </TouchableOpacity>
+        {/* Tabs */}
+        <View style={styles.tabsWrap}>
+          <View style={styles.tabs}>
+            {(['saved', 'memories'] as ProfileTab[]).map((t) => (
+              <TouchableOpacity
+                key={t}
+                style={[styles.tabBtn, activeTab === t && styles.tabBtnActive]}
+                onPress={() => setActiveTab(t)}
+              >
+                <Ionicons
+                  name={t === 'saved' ? (activeTab === t ? 'heart' : 'heart-outline') : (activeTab === t ? 'images' : 'images-outline')}
+                  size={16}
+                  color={activeTab === t ? Colors.primary : Colors.textMuted}
+                />
+                <Text style={[styles.tabLabel, activeTab === t && styles.tabLabelActive]}>
+                  {t === 'saved' ? `Saved (${savedIdeas.length})` : 'Memories'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {activeTab === 'saved' ? (
-          <View style={styles.savedList}>
-            {savedIdeaObjects.length === 0 ? (
+          <View style={styles.savedSection}>
+            {savedDateIdeas.length === 0 ? (
               <View style={styles.emptyTab}>
-                <Text style={styles.emptyEmoji}>💾</Text>
-                <Text style={styles.emptyTitle}>Nothing saved yet</Text>
-                <Text style={styles.emptySubtitle}>
-                  Heart date ideas to save them here for later.
+                <Text style={styles.emptyTabEmoji}>❤️</Text>
+                <Text style={styles.emptyTabTitle}>Nothing Saved Yet</Text>
+                <Text style={styles.emptyTabSub}>
+                  Tap the heart on any date idea to save it here
                 </Text>
+                <TouchableOpacity
+                  style={styles.exploreBtn}
+                  onPress={() => navigation.navigate('Explore')}
+                >
+                  <Text style={styles.exploreBtnText}>Explore Ideas</Text>
+                </TouchableOpacity>
               </View>
             ) : (
-              savedIdeaObjects.map((idea) => (
-                <DateIdeaCard
+              savedDateIdeas.map((idea) => (
+                <TouchableOpacity
                   key={idea.id}
-                  idea={idea}
-                  onPress={() => {}}
-                  variant="horizontal"
-                />
+                  style={styles.savedCard}
+                  activeOpacity={0.9}
+                  onPress={() => navigation.navigate('DateIdeaDetail', { idea })}
+                >
+                  <Image source={{ uri: idea.imageUrl }} style={styles.savedImg} />
+                  <View style={styles.savedInfo}>
+                    <Text style={styles.savedTitle} numberOfLines={2}>{idea.title}</Text>
+                    <View style={styles.savedMeta}>
+                      <Ionicons name="star" size={11} color={Colors.primary} />
+                      <Text style={styles.savedRating}>{idea.rating}</Text>
+                      <Text style={styles.savedDot}>·</Text>
+                      <Text style={styles.savedPrice}>{idea.priceRange}</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.unsaveBtn}
+                    onPress={() => toggleSaveIdea(idea.id)}
+                  >
+                    <Ionicons name="heart" size={20} color={Colors.primary} />
+                  </TouchableOpacity>
+                </TouchableOpacity>
               ))
             )}
           </View>
         ) : (
-          <View style={styles.memoriesTab}>
+          <View style={styles.memoriesSection}>
             <View style={styles.emptyTab}>
-              <Text style={styles.emptyEmoji}>📸</Text>
-              <Text style={styles.emptyTitle}>No memories yet</Text>
-              <Text style={styles.emptySubtitle}>
-                After completing a date, add photos and notes to capture the memory forever.
+              <Text style={styles.emptyTabEmoji}>📸</Text>
+              <Text style={styles.emptyTabTitle}>No Memories Yet</Text>
+              <Text style={styles.emptyTabSub}>
+                Complete date plans and add photos to start your memory gallery
               </Text>
+              <TouchableOpacity
+                style={styles.exploreBtn}
+                onPress={() => navigation.navigate('Plan')}
+              >
+                <Text style={styles.exploreBtnText}>Start a Plan</Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
 
-        {/* Settings Section */}
+        {/* Settings */}
         <View style={styles.settingsSection}>
-          <Text style={styles.settingsSectionTitle}>Settings</Text>
+          {SETTINGS_SECTIONS.map((section) => (
+            <View key={section.title} style={styles.settingsGroup}>
+              <Text style={styles.settingsGroupTitle}>{section.title}</Text>
+              <View style={styles.settingsCard}>
+                {section.items.map((item: any, idx) => (
+                  <View
+                    key={item.label}
+                    style={[
+                      styles.settingsRow,
+                      idx < section.items.length - 1 && styles.settingsRowBorder,
+                    ]}
+                  >
+                    <View style={styles.settingsLeft}>
+                      <View style={styles.settingsIconWrap}>
+                        <Ionicons name={item.icon as any} size={18} color={Colors.primary} />
+                      </View>
+                      <Text style={styles.settingsLabel}>{item.label}</Text>
+                    </View>
+                    {item.toggle ? (
+                      <Switch
+                        value={item.value}
+                        onValueChange={item.onChange}
+                        trackColor={{ false: Colors.inputBorder, true: Colors.secondary }}
+                        thumbColor={item.value ? Colors.primary : Colors.gray400}
+                      />
+                    ) : (
+                      <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+                    )}
+                  </View>
+                ))}
+              </View>
+            </View>
+          ))}
 
-          <View style={[styles.settingsCard, Shadow.sm]}>
-            <SettingsRow
-              icon="notifications-outline"
-              label="Push Notifications"
-              right={
-                <Switch
-                  value={notificationsEnabled}
-                  onValueChange={setNotificationsEnabled}
-                  trackColor={{ true: Colors.primary, false: Colors.gray300 }}
-                  thumbColor={Colors.white}
-                />
-              }
-            />
-            <SettingsDivider />
-            <SettingsRow
-              icon="time-outline"
-              label="Save Date History"
-              right={
-                <Switch
-                  value={saveHistory}
-                  onValueChange={setSaveHistory}
-                  trackColor={{ true: Colors.primary, false: Colors.gray300 }}
-                  thumbColor={Colors.white}
-                />
-              }
-            />
-            <SettingsDivider />
-            <SettingsRow
-              icon="location-outline"
-              label="Location Services"
-              rightIcon="chevron-forward"
-              onPress={() => {}}
-            />
-          </View>
-
-          <View style={[styles.settingsCard, Shadow.sm, { marginTop: Spacing.md }]}>
-            <SettingsRow
-              icon="person-outline"
-              label="Edit Profile"
-              rightIcon="chevron-forward"
-              onPress={() => {}}
-            />
-            <SettingsDivider />
-            <SettingsRow
-              icon="shield-checkmark-outline"
-              label="Privacy & Security"
-              rightIcon="chevron-forward"
-              onPress={() => {}}
-            />
-            <SettingsDivider />
-            <SettingsRow
-              icon="help-circle-outline"
-              label="Help & Support"
-              rightIcon="chevron-forward"
-              onPress={() => {}}
-            />
-            <SettingsDivider />
-            <SettingsRow
-              icon="star-outline"
-              label="Rate Datefully"
-              rightIcon="chevron-forward"
-              onPress={() => {}}
-            />
-          </View>
-
-          {/* Logout */}
-          <TouchableOpacity style={[styles.logoutBtn, Shadow.sm]} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={20} color={Colors.error} />
-            <Text style={styles.logoutText}>Sign Out</Text>
+          {/* Sign Out */}
+          <TouchableOpacity style={styles.signOutBtn} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={18} color={Colors.error} />
+            <Text style={styles.signOutText}>Sign Out</Text>
           </TouchableOpacity>
 
-          <Text style={styles.version}>Datefully v1.0.0 · Made with 💕</Text>
+          <Text style={styles.version}>Datefully v1.0.0</Text>
         </View>
       </ScrollView>
     </View>
   );
 };
 
-const SettingsRow: React.FC<{
-  icon: string;
-  label: string;
-  right?: React.ReactNode;
-  rightIcon?: string;
-  onPress?: () => void;
-  danger?: boolean;
-}> = ({ icon, label, right, rightIcon, onPress, danger }) => (
-  <TouchableOpacity
-    style={styles.settingsRow}
-    onPress={onPress}
-    disabled={!onPress && !right}
-    activeOpacity={onPress ? 0.7 : 1}
-  >
-    <View style={[styles.settingsIcon, danger && { backgroundColor: Colors.error + '15' }]}>
-      <Ionicons name={icon as any} size={18} color={danger ? Colors.error : Colors.primary} />
-    </View>
-    <Text style={[styles.settingsLabel, danger && { color: Colors.error }]}>{label}</Text>
-    <View style={styles.settingsRight}>
-      {right}
-      {rightIcon && (
-        <Ionicons name={rightIcon as any} size={18} color={Colors.textMuted} />
-      )}
-    </View>
-  </TouchableOpacity>
-);
-
-const SettingsDivider = () => <View style={styles.settingsDivider} />;
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
+  container: { flex: 1, backgroundColor: Colors.background },
   hero: {
-    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.xl,
     paddingBottom: Spacing['2xl'],
+    paddingHorizontal: Spacing['2xl'],
     alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  heroTop: {
-    alignSelf: 'flex-end',
-    marginBottom: Spacing.sm,
-  },
-  avatarContainer: {
-    position: 'relative',
-    marginBottom: Spacing.sm,
+    gap: 10,
   },
   avatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 88, height: 88,
+    borderRadius: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.5)',
+    marginBottom: 4,
   },
-  avatarInitials: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: Colors.white,
-    letterSpacing: 1,
-  },
-  avatarEdit: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: Colors.white,
-  },
-  heroName: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: Colors.white,
-  },
-  heroEmail: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.75)',
-  },
-  heroBadge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    borderRadius: BorderRadius.full,
-    marginTop: 4,
-  },
-  heroBadgeText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.white,
-  },
-  heroLocation: {
+  avatarText: { fontSize: 32, fontWeight: '800', color: '#fff' },
+  userName: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary },
+  userEmail: { fontSize: 14, color: Colors.textMuted },
+  relBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+    backgroundColor: 'rgba(139,0,0,0.2)',
+    paddingHorizontal: 14, paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(139,0,0,0.4)',
   },
-  heroLocationText: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.75)',
-  },
+  relEmoji: { fontSize: 15 },
+  relText: { fontSize: 13, fontWeight: '600', color: '#FF8080' },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  locationText: { fontSize: 13, color: Colors.textMuted },
   statsRow: {
     flexDirection: 'row',
-    backgroundColor: Colors.white,
-    marginHorizontal: Spacing.base,
-    marginTop: -Spacing.base,
+    backgroundColor: Colors.surfaceAlt,
     borderRadius: BorderRadius.xl,
     padding: Spacing.base,
-    zIndex: 10,
+    marginTop: 8,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
   },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  statIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: Colors.textMuted,
-    fontWeight: '500',
-  },
+  statItem: { flex: 1, alignItems: 'center', gap: 4 },
+  statNum: { fontSize: 20, fontWeight: '800', color: Colors.primary },
+  statLabel: { fontSize: 11, color: Colors.textMuted, fontWeight: '600' },
+  statDivider: { width: 1, backgroundColor: Colors.inputBorder, marginVertical: 4 },
   partnerCard: {
-    marginHorizontal: Spacing.base,
-    marginTop: Spacing.base,
-    backgroundColor: Colors.white,
+    marginHorizontal: Spacing['2xl'],
+    marginTop: Spacing.xl,
+    backgroundColor: Colors.surface,
     borderRadius: BorderRadius.xl,
     padding: Spacing.base,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  partnerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
+  partnerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   partnerAvatar: {
-    width: 44,
-    height: 44,
+    width: 44, height: 44,
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  partnerInitial: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: Colors.white,
-  },
-  partnerLabel: {
-    fontSize: 11,
-    color: Colors.textMuted,
-    fontWeight: '500',
-  },
-  partnerName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
+  partnerAvatarText: { fontSize: 18, fontWeight: '700', color: '#fff' },
+  partnerName: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  partnerSub: { fontSize: 12, color: Colors.textMuted },
   inviteBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    backgroundColor: Colors.surfaceAlt,
+    paddingHorizontal: 18, paddingVertical: 8,
     borderRadius: BorderRadius.full,
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
+    backgroundColor: Colors.secondary,
   },
-  inviteBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-  tabsRow: {
+  inviteBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  tabsWrap: { marginTop: Spacing.xl, paddingHorizontal: Spacing['2xl'] },
+  tabs: {
     flexDirection: 'row',
-    marginHorizontal: Spacing.base,
-    marginTop: Spacing.xl,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.surfaceAlt,
     borderRadius: BorderRadius.xl,
     padding: 4,
+    borderWidth: 1,
+    borderColor: Colors.inputBorder,
   },
-  profileTab: {
+  tabBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -493,110 +406,97 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: BorderRadius.lg,
   },
-  profileTabActive: {
-    backgroundColor: Colors.surfaceAlt,
+  tabBtnActive: { backgroundColor: 'rgba(212,175,55,0.12)' },
+  tabLabel: { fontSize: 13, fontWeight: '600', color: Colors.textMuted },
+  tabLabelActive: { color: Colors.primary },
+  savedSection: { paddingHorizontal: Spacing['2xl'], paddingTop: Spacing.xl },
+  savedCard: {
+    flexDirection: 'row',
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
+    overflow: 'hidden',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+    alignItems: 'center',
   },
-  profileTabText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.textMuted,
-  },
-  profileTabTextActive: {
-    color: Colors.primary,
-  },
-  savedList: {
-    paddingHorizontal: Spacing.base,
-    marginTop: Spacing.md,
-  },
-  memoriesTab: {
-    marginTop: Spacing.md,
-  },
+  savedImg: { width: 80, height: 80 },
+  savedInfo: { flex: 1, padding: 12, gap: 6 },
+  savedTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, lineHeight: 19 },
+  savedMeta: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  savedRating: { fontSize: 12, color: Colors.primary, fontWeight: '700' },
+  savedDot: { color: Colors.textMuted, fontSize: 12 },
+  savedPrice: { fontSize: 12, color: Colors.textMuted },
+  unsaveBtn: { padding: 14 },
+  memoriesSection: { paddingHorizontal: Spacing['2xl'], paddingTop: Spacing.xl },
   emptyTab: {
     alignItems: 'center',
-    paddingVertical: Spacing['2xl'],
-    gap: Spacing.md,
+    paddingVertical: 48,
+    gap: 12,
   },
-  emptyEmoji: {
-    fontSize: 40,
+  emptyTabEmoji: { fontSize: 48 },
+  emptyTabTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
+  emptyTabSub: { fontSize: 13, color: Colors.textMuted, textAlign: 'center', lineHeight: 20 },
+  exploreBtn: {
+    marginTop: 8,
+    paddingHorizontal: 24, paddingVertical: 10,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.secondary,
   },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  emptySubtitle: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: Spacing['2xl'],
-  },
+  exploreBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
   settingsSection: {
-    marginTop: Spacing.xl,
-    paddingHorizontal: Spacing.base,
-    paddingBottom: Spacing.xl,
-    gap: 4,
+    paddingHorizontal: Spacing['2xl'],
+    paddingTop: Spacing['2xl'],
+    gap: Spacing.xl,
   },
-  settingsSectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-    marginBottom: Spacing.md,
+  settingsGroup: { gap: 8 },
+  settingsGroupTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    paddingLeft: 4,
   },
   settingsCard: {
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.surface,
     borderRadius: BorderRadius.xl,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
     overflow: 'hidden',
   },
   settingsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: Spacing.base,
-    gap: Spacing.md,
   },
-  settingsIcon: {
-    width: 36,
-    height: 36,
+  settingsRowBorder: { borderBottomWidth: 1, borderBottomColor: Colors.inputBorder },
+  settingsLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  settingsIconWrap: {
+    width: 36, height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.surfaceAlt,
+    backgroundColor: 'rgba(139,0,0,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  settingsLabel: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '500',
-    color: Colors.textPrimary,
-  },
-  settingsRight: {
-    alignItems: 'center',
-  },
-  settingsDivider: {
-    height: 1,
-    backgroundColor: Colors.gray100,
-    marginLeft: 68,
-  },
-  logoutBtn: {
+  settingsLabel: { fontSize: 15, color: Colors.textPrimary, fontWeight: '500' },
+  signOutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.sm,
-    marginTop: Spacing.lg,
-    backgroundColor: Colors.white,
+    gap: 10,
+    backgroundColor: 'rgba(231,76,60,0.08)',
     borderRadius: BorderRadius.xl,
-    padding: Spacing.base,
-    borderWidth: 1.5,
-    borderColor: Colors.error + '30',
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(231,76,60,0.2)',
   },
-  logoutText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.error,
-  },
+  signOutText: { fontSize: 15, fontWeight: '700', color: Colors.error },
   version: {
     textAlign: 'center',
     fontSize: 12,
     color: Colors.textMuted,
-    marginTop: Spacing.xl,
+    paddingBottom: 8,
   },
 });
