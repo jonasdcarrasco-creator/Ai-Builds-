@@ -4,389 +4,285 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
+  TextInput,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  ActivityIndicator,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, BorderRadius } from '../../constants';
-import { RELATIONSHIP_TYPES } from '../../constants';
-import { Button } from '../../components/common/Button';
-import { Input } from '../../components/common/Input';
-import { useAuthStore } from '../../store';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../types';
+import { useAuthStore, useDateStore } from '../../store';
+import { signUp } from '../../lib/supabase';
+import { Colors, Typography, Spacing, BorderRadius } from '../../constants/theme';
 
-interface SignupScreenProps {
-  navigation: any;
-}
+type Props = {
+  navigation: NativeStackNavigationProp<RootStackParamList, 'Signup'>;
+};
 
-export const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
-  const insets = useSafeAreaInsets();
-  const [step, setStep] = useState(1);
+export default function SignupScreen({ navigation }: Props) {
+  const { setAuthenticated } = useAuthStore();
+  const { setUserEmail, setUserName } = useDateStore();
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [relationshipType, setRelationshipType] = useState('');
-  const [partnerName, setPartnerName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [error, setError] = useState('');
+  const [focusedField, setFocusedField] = useState('');
 
-  const { setUser } = useAuthStore();
-
-  const validateStep1 = () => {
-    const newErrors: Record<string, string> = {};
-    if (!name.trim()) newErrors.name = 'Name is required';
-    if (!email) newErrors.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'Invalid email address';
-    if (!password) newErrors.password = 'Password is required';
-    else if (password.length < 8) newErrors.password = 'Minimum 8 characters required';
-    if (password !== confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const validate = () => {
+    if (!name.trim()) return 'Name is required.';
+    if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) return 'Enter a valid email.';
+    if (password.length < 8) return 'Password must be at least 8 characters.';
+    if (password !== confirmPassword) return 'Passwords do not match.';
+    return null;
   };
 
-  const handleNext = () => {
-    if (step === 1 && validateStep1()) {
-      setStep(2);
-    }
-  };
-
-  const handleSignup = async () => {
-    if (!relationshipType) {
-      setErrors({ relationshipType: 'Please select a relationship type' });
+  const handleSignUp = async () => {
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
       return;
     }
+    setError('');
     setLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-    setUser({
-      id: Date.now().toString(),
-      name: name.trim(),
-      email,
-      relationshipType: relationshipType as any,
-      partnerName: partnerName || undefined,
-      preferences: {
-        categories: ['romantic', 'foodie'],
-        budgetRange: 'moderate',
-        notificationsEnabled: true,
-        saveHistory: true,
-      },
-      createdAt: new Date().toISOString(),
-    });
-    setLoading(false);
+    try {
+      const { data, error: authError } = await signUp(email.trim(), password, name.trim());
+      if (authError) {
+        setError(authError.message || 'Sign up failed. Please try again.');
+      } else if (data.user) {
+        setUserEmail(email.trim());
+        setUserName(name.trim());
+        setAuthenticated(true, email.trim());
+        navigation.navigate('WhosPlanning');
+      }
+    } catch {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const inputStyle = (field: string) => [
+    styles.input,
+    focusedField === field && styles.inputFocused,
+  ];
+
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <LinearGradient
-        colors={['#9B59B6', '#6C3483']}
-        style={[styles.header, { paddingTop: insets.top + Spacing.base }]}
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <TouchableOpacity style={styles.backBtn} onPress={() => {
-          if (step === 2) setStep(1);
-          else navigation.goBack();
-        }}>
-          <Ionicons name="chevron-back" size={24} color={Colors.white} />
-        </TouchableOpacity>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Back */}
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Text style={styles.backText}>← Back</Text>
+          </TouchableOpacity>
 
-        <View style={styles.headerContent}>
-          <Text style={styles.headerEmoji}>✨</Text>
-          <Text style={styles.headerTitle}>
-            {step === 1 ? 'Create Account' : 'About You'}
-          </Text>
-          <Text style={styles.headerSubtitle}>
-            {step === 1
-              ? 'Join thousands planning perfect dates'
-              : 'Help us personalize your experience'}
-          </Text>
-        </View>
-
-        {/* Progress */}
-        <View style={styles.progressRow}>
-          {[1, 2].map((s) => (
-            <View
-              key={s}
-              style={[
-                styles.progressBar,
-                { flex: 1, opacity: s <= step ? 1 : 0.4 },
-              ]}
-            />
-          ))}
-        </View>
-      </LinearGradient>
-
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: insets.bottom + Spacing['2xl'] }
-        ]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {step === 1 ? (
-          <View style={styles.form}>
-            <Input
-              label="Full Name"
-              placeholder="Your first & last name"
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-              leftIcon="person-outline"
-              error={errors.name}
-              required
-            />
-            <Input
-              label="Email Address"
-              placeholder="you@example.com"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              leftIcon="mail-outline"
-              error={errors.email}
-              required
-            />
-            <Input
-              label="Password"
-              placeholder="Minimum 8 characters"
-              value={password}
-              onChangeText={setPassword}
-              isPassword
-              leftIcon="lock-closed-outline"
-              error={errors.password}
-              required
-            />
-            <Input
-              label="Confirm Password"
-              placeholder="Repeat your password"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              isPassword
-              leftIcon="lock-closed-outline"
-              error={errors.confirmPassword}
-              required
-            />
-
-            <Button title="Continue" onPress={handleNext} size="lg" />
-
-            <TouchableOpacity
-              style={styles.signInRow}
-              onPress={() => navigation.navigate('Login')}
-            >
-              <Text style={styles.signInText}>Already have an account? </Text>
-              <Text style={styles.signInLink}>Sign In</Text>
-            </TouchableOpacity>
+          {/* Logo */}
+          <View style={styles.logoArea}>
+            <Text style={styles.logoText}>Datefully</Text>
+            <View style={styles.logoLine} />
           </View>
-        ) : (
+
+          {/* Heading */}
+          <Text style={styles.heading}>Create your account</Text>
+          <Text style={styles.subheading}>Join Datefully and start planning</Text>
+
+          {/* Form */}
           <View style={styles.form}>
-            <Text style={styles.sectionTitle}>Relationship Status</Text>
-            <Text style={styles.sectionSubtitle}>
-              This helps us suggest the right date ideas for you.
+            {/* Name */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Full Name</Text>
+              <TextInput
+                style={inputStyle('name')}
+                value={name}
+                onChangeText={setName}
+                placeholder="Your name"
+                placeholderTextColor={Colors.textMuted}
+                autoCapitalize="words"
+                onFocus={() => setFocusedField('name')}
+                onBlur={() => setFocusedField('')}
+              />
+            </View>
+
+            {/* Email */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                style={inputStyle('email')}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@example.com"
+                placeholderTextColor={Colors.textMuted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                onFocus={() => setFocusedField('email')}
+                onBlur={() => setFocusedField('')}
+              />
+            </View>
+
+            {/* Password */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Password</Text>
+              <View style={[styles.inputWrapper, focusedField === 'password' && styles.inputFocused]}>
+                <TextInput
+                  style={styles.inputInner}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="At least 8 characters"
+                  placeholderTextColor={Colors.textMuted}
+                  secureTextEntry={!showPassword}
+                  onFocus={() => setFocusedField('password')}
+                  onBlur={() => setFocusedField('')}
+                />
+                <TouchableOpacity onPress={() => setShowPassword((v) => !v)} style={styles.eyeBtn}>
+                  <Text style={styles.eyeText}>{showPassword ? '🙈' : '👁'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Confirm Password */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Confirm Password</Text>
+              <TextInput
+                style={inputStyle('confirm')}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Repeat your password"
+                placeholderTextColor={Colors.textMuted}
+                secureTextEntry={!showPassword}
+                onFocus={() => setFocusedField('confirm')}
+                onBlur={() => setFocusedField('')}
+              />
+            </View>
+
+            {/* Error */}
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+            {/* Create Account button */}
+            <TouchableOpacity
+              style={[styles.createBtn, loading && styles.btnDisabled]}
+              onPress={handleSignUp}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              {loading ? (
+                <ActivityIndicator color={Colors.white} size="small" />
+              ) : (
+                <Text style={styles.createBtnText}>Create Account</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Terms note */}
+            <Text style={styles.termsText}>
+              By signing up, you agree to our Terms of Service and Privacy Policy.
             </Text>
 
-            <View style={styles.relationshipGrid}>
-              {RELATIONSHIP_TYPES.map((type) => (
-                <TouchableOpacity
-                  key={type.id}
-                  style={[
-                    styles.relationshipCard,
-                    relationshipType === type.id && styles.relationshipCardActive,
-                  ]}
-                  onPress={() => setRelationshipType(type.id)}
-                >
-                  <Text style={styles.relationshipEmoji}>{type.emoji}</Text>
-                  <Text style={[
-                    styles.relationshipLabel,
-                    relationshipType === type.id && styles.relationshipLabelActive,
-                  ]}>
-                    {type.label}
-                  </Text>
-                  {relationshipType === type.id && (
-                    <View style={styles.selectedCheck}>
-                      <Ionicons name="checkmark-circle" size={16} color={Colors.primary} />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
+            {/* Sign in link */}
+            <View style={styles.signinRow}>
+              <Text style={styles.signinText}>Already have an account? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                <Text style={styles.signinLink}>Sign In</Text>
+              </TouchableOpacity>
             </View>
-
-            {errors.relationshipType && (
-              <Text style={styles.errorText}>{errors.relationshipType}</Text>
-            )}
-
-            {(relationshipType === 'dating' || relationshipType === 'married') && (
-              <Input
-                label="Partner's Name (optional)"
-                placeholder="What should we call them?"
-                value={partnerName}
-                onChangeText={setPartnerName}
-                leftIcon="heart-outline"
-              />
-            )}
-
-            <View style={styles.termsRow}>
-              <Text style={styles.termsText}>
-                By creating an account, you agree to our{' '}
-                <Text style={styles.termsLink}>Terms of Service</Text>
-                {' '}and{' '}
-                <Text style={styles.termsLink}>Privacy Policy</Text>.
-              </Text>
-            </View>
-
-            <Button
-              title={loading ? 'Creating your account...' : 'Create Account 💕'}
-              onPress={handleSignup}
-              loading={loading}
-              size="lg"
-            />
           </View>
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  header: {
-    paddingHorizontal: Spacing.base,
-    paddingBottom: Spacing['2xl'],
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.base,
-  },
-  headerContent: {
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: Spacing.xl,
-  },
-  headerEmoji: {
-    fontSize: 40,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: Colors.white,
-  },
-  headerSubtitle: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.8)',
-    textAlign: 'center',
-  },
-  progressRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: Colors.white,
-    borderRadius: 2,
-  },
-  scrollView: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: Colors.background },
+  flex: { flex: 1 },
   scrollContent: {
-    padding: Spacing['2xl'],
+    paddingHorizontal: Spacing.screen,
+    paddingBottom: Spacing.xxxl,
   },
-  form: {
-    gap: 4,
+  backBtn: { paddingTop: Spacing.md, paddingBottom: Spacing.lg },
+  backText: { color: Colors.gold, fontSize: Typography.base },
+  logoArea: { alignItems: 'center', marginBottom: Spacing.xxl, marginTop: Spacing.xl },
+  logoText: {
+    fontFamily: Typography.heading,
+    fontSize: Typography.xxxl,
+    color: Colors.gold,
+    fontStyle: 'italic',
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+  logoLine: { width: 60, height: 2, backgroundColor: Colors.gold, marginTop: Spacing.xs, opacity: 0.5 },
+  heading: {
+    fontFamily: Typography.heading,
+    fontSize: Typography.xxl,
     color: Colors.textPrimary,
-    marginBottom: 4,
+    marginBottom: Spacing.xs,
   },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.lg,
-    lineHeight: 20,
+  subheading: { color: Colors.textSecondary, fontSize: Typography.base, marginBottom: Spacing.xxl },
+  form: { gap: Spacing.md },
+  inputGroup: { gap: Spacing.xs },
+  label: { color: Colors.textSecondary, fontSize: Typography.sm, fontWeight: Typography.semibold },
+  input: {
+    backgroundColor: Colors.inputBackground,
+    borderWidth: 1,
+    borderColor: Colors.inputBorder,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    color: Colors.textPrimary,
+    fontSize: Typography.base,
   },
-  relationshipGrid: {
+  inputFocused: { borderColor: Colors.inputBorderFocus },
+  inputWrapper: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: Spacing.base,
-  },
-  relationshipCard: {
-    width: '47%',
-    backgroundColor: Colors.white,
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.base,
     alignItems: 'center',
-    gap: 8,
-    borderWidth: 2,
-    borderColor: Colors.gray200,
-    position: 'relative',
+    backgroundColor: Colors.inputBackground,
+    borderWidth: 1,
+    borderColor: Colors.inputBorder,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
   },
-  relationshipCardActive: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.surfaceAlt,
+  inputInner: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    color: Colors.textPrimary,
+    fontSize: Typography.base,
   },
-  relationshipEmoji: {
-    fontSize: 28,
-  },
-  relationshipLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-    textAlign: 'center',
-  },
-  relationshipLabelActive: {
-    color: Colors.primary,
-  },
-  selectedCheck: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-  },
+  eyeBtn: { padding: Spacing.xs },
+  eyeText: { fontSize: 16 },
   errorText: {
-    fontSize: 12,
     color: Colors.error,
-    marginTop: -8,
-    marginBottom: Spacing.sm,
-  },
-  termsRow: {
-    marginVertical: Spacing.base,
-  },
-  termsText: {
-    fontSize: 13,
-    color: Colors.textMuted,
-    lineHeight: 20,
+    fontSize: Typography.sm,
     textAlign: 'center',
+    backgroundColor: 'rgba(231,76,60,0.1)',
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.sm,
   },
-  termsLink: {
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-  signInRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+  createBtn: {
+    backgroundColor: Colors.red,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.lg,
     alignItems: 'center',
-    marginTop: Spacing.lg,
+    marginTop: Spacing.sm,
   },
-  signInText: {
-    fontSize: 14,
-    color: Colors.textSecondary,
+  btnDisabled: { opacity: 0.6 },
+  createBtnText: { color: Colors.white, fontSize: Typography.md, fontWeight: Typography.bold, letterSpacing: 0.5 },
+  termsText: {
+    color: Colors.textMuted,
+    fontSize: Typography.xs,
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: Spacing.md,
   },
-  signInLink: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
+  signinRow: { flexDirection: 'row', justifyContent: 'center', paddingTop: Spacing.sm },
+  signinText: { color: Colors.textSecondary, fontSize: Typography.sm },
+  signinLink: { color: Colors.gold, fontSize: Typography.sm, fontWeight: Typography.bold },
 });

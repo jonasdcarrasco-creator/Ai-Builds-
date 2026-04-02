@@ -90,6 +90,8 @@ export async function generateDateOptions(
 Return a valid JSON array with exactly 3 objects. Each object must have:
 - id: unique string like "opt1", "opt2", "opt3"
 - type: one of "best_match", "chill", "splurge"
+- typeLabel: "Best Match" | "Chill Vibes" | "Splurge"
+- typeEmoji: "⭐" | "😌" | "💎"
 - title: creative date name (string)
 - venues: array of 2-3 specific Philadelphia venue names (strings)
 - estimatedCost: cost range like "$80–$120" (string)
@@ -128,6 +130,8 @@ function getFallbackDateOptions(budget: number, occasion: string): DateOption[] 
     {
       id: 'opt1',
       type: 'best_match',
+      typeLabel: 'Best Match',
+      typeEmoji: '⭐',
       title: 'Rittenhouse Romance',
       venues: ['Parc Brasserie', 'Rittenhouse Square', 'Franklin Fountain'],
       estimatedCost: `$${Math.round(budget * 0.8)}–$${budget}`,
@@ -139,6 +143,8 @@ function getFallbackDateOptions(budget: number, occasion: string): DateOption[] 
     {
       id: 'opt2',
       type: 'chill',
+      typeLabel: 'Chill Vibes',
+      typeEmoji: '😌',
       title: 'East Passyunk Hangout',
       venues: ['Garage Philadelphia', "Geno's Steaks", 'The Sidecar Bar'],
       estimatedCost: `$${Math.round(budget * 0.4)}–$${Math.round(budget * 0.6)}`,
@@ -150,6 +156,8 @@ function getFallbackDateOptions(budget: number, occasion: string): DateOption[] 
     {
       id: 'opt3',
       type: 'splurge',
+      typeLabel: 'Splurge',
+      typeEmoji: '💎',
       title: 'Old City Luxury Night',
       venues: ['Zahav', 'Philadelphia Museum of Art', 'Ranstead Room'],
       estimatedCost: `$${Math.round(budget * 1.2)}–$${Math.round(budget * 1.5)}`,

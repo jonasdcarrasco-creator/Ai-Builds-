@@ -1,4 +1,4 @@
-// Datefully — All TypeScript Types
+// ─── Datefully — TypeScript Types ───────────────────────────────────────────
 
 export type CoupleType = 'couple' | 'two_women' | 'two_men' | 'surprise' | 'solo';
 
@@ -35,11 +35,14 @@ export type DateCardType = 'best_match' | 'chill' | 'splurge';
 export interface DateOption {
   id: string;
   type: DateCardType;
+  typeLabel: string;
+  typeEmoji: string;
   title: string;
   venues: string[];
   estimatedCost: string;
   description: string;
   dressCode: string;
+  address?: string;
 }
 
 export interface VendorListing {
