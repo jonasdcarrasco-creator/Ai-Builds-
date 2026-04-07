@@ -88,7 +88,7 @@ export const PlanScreen: React.FC<PlanScreenProps> = ({ navigation }) => {
           </View>
           <TouchableOpacity
             style={styles.createBtn}
-            onPress={() => setShowCreate(!showCreate)}
+            onPress={() => navigation.navigate('CreatePlan')}
           >
             <Ionicons
               name={showCreate ? 'close' : 'add'}
@@ -153,7 +153,7 @@ export const PlanScreen: React.FC<PlanScreenProps> = ({ navigation }) => {
                 <PlanCard
                   key={plan.id}
                   plan={plan}
-                  onPress={() => {}}
+                  onPress={() => navigation.navigate('PlanDetail', { plan })}
                   getStatusColor={getStatusColor}
                   getStatusLabel={getStatusLabel}
                   formatDate={formatDate}
@@ -172,7 +172,7 @@ export const PlanScreen: React.FC<PlanScreenProps> = ({ navigation }) => {
                 <PlanCard
                   key={plan.id}
                   plan={plan}
-                  onPress={() => {}}
+                  onPress={() => navigation.navigate('PlanDetail', { plan })}
                   getStatusColor={getStatusColor}
                   getStatusLabel={getStatusLabel}
                   formatDate={formatDate}
@@ -188,7 +188,7 @@ export const PlanScreen: React.FC<PlanScreenProps> = ({ navigation }) => {
             <Text style={styles.emptySubtitle}>
               Tap the + button to create your first date plan and start building unforgettable memories.
             </Text>
-            <TouchableOpacity style={styles.emptyBtn} onPress={() => setShowCreate(true)}>
+            <TouchableOpacity style={styles.emptyBtn} onPress={() => navigation.navigate('CreatePlan')}>
               <LinearGradient
                 colors={['#FF6B9D', '#E85585']}
                 style={styles.emptyBtnGradient}
