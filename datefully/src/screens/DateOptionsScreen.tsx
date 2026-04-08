@@ -1,353 +1,241 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Animated,
-  Dimensions,
-  ActivityIndicator,
-  Alert,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  Animated, ActivityIndicator, Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList, DateOption, SelectedDate } from '../types';
+import { RootStackParamList, DateOption, DateStop, SelectedDate } from '../types';
 import { useDateStore } from '../store';
 import { generateDateOptions } from '../lib/claude';
 import { Colors, Typography, Spacing, BorderRadius } from '../constants/theme';
+import ScreenContainer from '../components/common/ScreenContainer';
+import RomanticTipCard from '../components/common/RomanticTip';
+import { getTip } from '../data/romanticTips';
 
-type Props = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'DateOptions'>;
-};
-
+type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'DateOptions'> };
 const { width, height } = Dimensions.get('window');
 const HEART_COUNT = 18;
 
-function generateConfirmationNumber() {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
-
-// Heart Rain animation component
-function HeartRain({ visible, onComplete }: { visible: boolean; onComplete: () => void }) {
+// ── Heart rain ────────────────────────────────────────────────────────────────
+function HeartRain({ visible, onDone }: { visible: boolean; onDone: () => void }) {
   const hearts = useRef(
     Array.from({ length: HEART_COUNT }, () => ({
       anim: new Animated.Value(0),
-      x: Math.random() * width * 0.6 - width * 0.3,
-      delay: Math.random() * 600,
-      scale: 0.8 + Math.random() * 0.8,
+      x: (Math.random() - 0.5) * width * 0.7,
+      delay: Math.random() * 500,
+      scale: 0.7 + Math.random() * 0.8,
     }))
   ).current;
 
   useEffect(() => {
     if (!visible) return;
-    const anims = hearts.map((h) =>
-      Animated.sequence([
-        Animated.delay(h.delay),
-        Animated.timing(h.anim, {
-          toValue: 1,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    Animated.parallel(anims).start(() => {
+    Animated.parallel(
+      hearts.map((h) =>
+        Animated.sequence([
+          Animated.delay(h.delay),
+          Animated.timing(h.anim, { toValue: 1, duration: 1400, useNativeDriver: true }),
+        ])
+      )
+    ).start(() => {
       hearts.forEach((h) => h.anim.setValue(0));
-      onComplete();
+      onDone();
     });
   }, [visible]);
 
   if (!visible) return null;
-
   return (
-    <View style={heartStyles.overlay} pointerEvents="none">
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
       {hearts.map((h, i) => (
         <Animated.Text
           key={i}
-          style={[
-            heartStyles.heart,
-            {
-              left: width / 2 + h.x,
-              transform: [
-                {
-                  translateY: h.anim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [height * 0.6, height * 0.1],
-                  }),
-                },
-                { scale: h.scale },
-              ],
-              opacity: h.anim.interpolate({
-                inputRange: [0, 0.7, 1],
-                outputRange: [1, 1, 0],
-              }),
-            },
-          ]}
-        >
-          ❤️
-        </Animated.Text>
+          style={{
+            position: 'absolute', left: width / 2 + h.x, fontSize: 24,
+            transform: [
+              { translateY: h.anim.interpolate({ inputRange: [0, 1], outputRange: [height * 0.7, height * 0.1] }) },
+              { scale: h.scale },
+            ],
+            opacity: h.anim.interpolate({ inputRange: [0, 0.75, 1], outputRange: [1, 1, 0] }),
+          }}
+        >❤️</Animated.Text>
       ))}
     </View>
   );
 }
 
-const heartStyles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 999,
-    pointerEvents: 'none',
-  },
-  heart: {
-    position: 'absolute',
-    fontSize: 24,
-  },
-});
-
-function DateCard({
-  option,
-  onBook,
-}: {
-  option: DateOption;
-  onBook: (opt: DateOption) => void;
-}) {
-  const borderColor =
-    option.type === 'splurge'
-      ? Colors.gold
-      : option.type === 'chill'
-      ? Colors.success
-      : Colors.red;
-
+// ── Stop arrow row ────────────────────────────────────────────────────────────
+function StopRow({ stop, accent }: { stop: DateStop; accent: string }) {
+  const dietaryColor = stop.dietaryVerified?.includes('Halal') ? '#27ae60' : stop.dietaryVerified?.includes('Vegan') ? '#2ecc71' : null;
   return (
-    <View style={[cardStyles.card, { borderTopColor: borderColor }]}>
-      {/* Badge */}
-      <View style={[cardStyles.badge, { backgroundColor: borderColor + '22', borderColor }]}>
-        <Text style={cardStyles.badgeEmoji}>{option.typeEmoji || '⭐'}</Text>
-        <Text style={[cardStyles.badgeText, { color: borderColor }]}>
-          {option.typeLabel || option.type.replace('_', ' ')}
-        </Text>
+    <View style={stopS.container}>
+      <View style={[stopS.labelBadge, { backgroundColor: accent + '22', borderColor: accent }]}>
+        <Text style={[stopS.labelText, { color: accent }]}>{stop.label}</Text>
       </View>
-
-      {/* Title */}
-      <Text style={cardStyles.title}>{option.title}</Text>
-
-      {/* Venues */}
-      <View style={cardStyles.venueList}>
-        {option.venues.map((v, i) => (
-          <View key={i} style={cardStyles.venueRow}>
-            <Text style={cardStyles.venueDot}>•</Text>
-            <Text style={cardStyles.venue}>{v}</Text>
+      <View style={stopS.details}>
+        <Text style={stopS.venueName}>{stop.venueName}</Text>
+        <View style={stopS.metaRow}>
+          <Text style={stopS.meta}>{stop.venueType}</Text>
+          {stop.time && <Text style={stopS.meta}>· {stop.time}</Text>}
+          <Text style={stopS.meta}>· {stop.duration}</Text>
+        </View>
+        <View style={stopS.metaRow}>
+          <Text style={stopS.cost}>{stop.estimatedCost}</Text>
+          {stop.rating && <Text style={stopS.stars}>⭐ {stop.rating} ({stop.reviewCount})</Text>}
+        </View>
+        {dietaryColor && (
+          <View style={[stopS.dietBadge, { borderColor: dietaryColor }]}>
+            <Text style={[stopS.dietText, { color: dietaryColor }]}>✓ {stop.dietaryVerified}</Text>
           </View>
-        ))}
+        )}
       </View>
-
-      {/* Cost */}
-      <Text style={cardStyles.cost}>{option.estimatedCost}</Text>
-
-      {/* Description */}
-      <Text style={cardStyles.description}>{option.description}</Text>
-
-      {/* Book button */}
-      <TouchableOpacity
-        style={cardStyles.bookBtn}
-        onPress={() => onBook(option)}
-        activeOpacity={0.85}
-      >
-        <Text style={cardStyles.bookBtnText}>Book it 🎯</Text>
-      </TouchableOpacity>
     </View>
   );
 }
 
-const cardStyles = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.card,
-    borderRadius: BorderRadius.xl,
-    borderTopWidth: 3,
-    padding: Spacing.xl,
-    marginBottom: Spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    borderWidth: 1,
-    borderRadius: BorderRadius.pill,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    alignSelf: 'flex-start',
-    marginBottom: Spacing.md,
-  },
-  badgeEmoji: { fontSize: 13 },
-  badgeText: { fontSize: Typography.xs, fontWeight: Typography.bold, letterSpacing: 0.5, textTransform: 'uppercase' },
-  title: {
-    fontFamily: Typography.heading,
-    fontSize: Typography.xl,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.sm,
-  },
-  venueList: { marginBottom: Spacing.sm, gap: 3 },
-  venueRow: { flexDirection: 'row', gap: 6 },
-  venueDot: { color: Colors.gold, fontSize: Typography.base },
-  venue: { color: Colors.textSecondary, fontSize: Typography.base, flex: 1 },
-  cost: {
-    fontSize: Typography.lg,
-    color: Colors.gold,
-    fontWeight: Typography.bold,
-    marginBottom: Spacing.sm,
-  },
-  description: {
-    color: Colors.textSecondary,
-    fontSize: Typography.sm,
-    lineHeight: 20,
-    marginBottom: Spacing.lg,
-  },
-  bookBtn: {
-    backgroundColor: Colors.red,
-    borderRadius: BorderRadius.md,
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
-  },
-  bookBtnText: {
-    color: Colors.white,
-    fontSize: Typography.base,
-    fontWeight: Typography.bold,
-  },
+const stopS = StyleSheet.create({
+  container: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'flex-start', marginBottom: Spacing.sm },
+  labelBadge: { borderWidth: 1, borderRadius: BorderRadius.sm, paddingHorizontal: 6, paddingVertical: 3, alignSelf: 'flex-start', marginTop: 2 },
+  labelText: { fontSize: 9, fontWeight: Typography.bold, letterSpacing: 0.5 },
+  details: { flex: 1 },
+  venueName: { color: Colors.textPrimary, fontSize: Typography.base, fontWeight: Typography.semibold, marginBottom: 3 },
+  metaRow: { flexDirection: 'row', gap: 5, flexWrap: 'wrap', marginBottom: 2 },
+  meta: { color: Colors.textMuted, fontSize: Typography.xs },
+  cost: { color: Colors.gold, fontSize: Typography.sm, fontWeight: Typography.semibold },
+  stars: { color: Colors.textSecondary, fontSize: Typography.xs, marginLeft: 6 },
+  dietBadge: { borderWidth: 1, borderRadius: BorderRadius.sm, paddingHorizontal: 6, paddingVertical: 2, alignSelf: 'flex-start', marginTop: 4 },
+  dietText: { fontSize: Typography.xs, fontWeight: Typography.semibold },
 });
 
-export default function DateOptionsScreen({ navigation }: Props) {
-  const { userName, budget, occasion, planningFor, partnerProfile, dateOptions, setDateOptions, setSelectedDate, setBookingTime } =
-    useDateStore();
+// ── Date card ─────────────────────────────────────────────────────────────────
+function DateCard({ option, onBook }: { option: DateOption; onBook: (o: DateOption) => void }) {
+  const accent = option.type === 'splurge' ? Colors.gold : option.type === 'chill' ? Colors.success : Colors.red;
+  return (
+    <View style={[card.container, { borderTopColor: accent }]}>
+      <View style={[card.badge, { backgroundColor: accent + '20', borderColor: accent }]}>
+        <Text style={card.badgeEmoji}>{option.typeEmoji}</Text>
+        <Text style={[card.badgeText, { color: accent }]}>{option.typeLabel}</Text>
+      </View>
 
+      <Text style={card.title}>{option.title}</Text>
+      <Text style={card.desc}>{option.description}</Text>
+
+      {/* Full arc */}
+      <View style={card.arc}>
+        {option.stops?.map((stop, i) => (
+          <React.Fragment key={stop.label}>
+            <StopRow stop={stop} accent={accent} />
+            {i < (option.stops?.length ?? 0) - 1 && (
+              <View style={card.arrow}><Text style={[card.arrowText, { color: accent }]}>↓</Text></View>
+            )}
+          </React.Fragment>
+        ))}
+      </View>
+
+      <View style={card.footer}>
+        <View>
+          <Text style={card.totalLabel}>Total Est.</Text>
+          <Text style={card.totalCost}>{option.estimatedCost}</Text>
+        </View>
+        {option.dietaryBadge && (
+          <View style={card.dietaryBadge}>
+            <Text style={card.dietaryBadgeText}>✓ {option.dietaryBadge}</Text>
+          </View>
+        )}
+        <TouchableOpacity style={[card.bookBtn, { backgroundColor: accent === Colors.gold ? Colors.red : accent }]} onPress={() => onBook(option)} activeOpacity={0.85}>
+          <Text style={card.bookBtnText}>Book it 🎯</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+const card = StyleSheet.create({
+  container: { backgroundColor: Colors.card, borderRadius: BorderRadius.xl, borderTopWidth: 3, borderWidth: 1, borderColor: Colors.cardBorder, padding: Spacing.xl, marginBottom: Spacing.lg },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: BorderRadius.pill, paddingHorizontal: Spacing.sm, paddingVertical: 4, alignSelf: 'flex-start', marginBottom: Spacing.md },
+  badgeEmoji: { fontSize: 13 },
+  badgeText: { fontSize: Typography.xs, fontWeight: Typography.bold, textTransform: 'uppercase', letterSpacing: 0.5 },
+  title: { fontFamily: Typography.heading, fontSize: Typography.xl, color: Colors.textPrimary, marginBottom: Spacing.xs },
+  desc: { color: Colors.textSecondary, fontSize: Typography.sm, lineHeight: 20, marginBottom: Spacing.lg },
+  arc: { marginBottom: Spacing.md },
+  arrow: { alignItems: 'center', marginVertical: 2 },
+  arrowText: { fontSize: 18, fontWeight: Typography.bold },
+  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm, borderTopWidth: 1, borderTopColor: Colors.cardBorder, paddingTop: Spacing.md },
+  totalLabel: { color: Colors.textMuted, fontSize: Typography.xs },
+  totalCost: { color: Colors.gold, fontSize: Typography.lg, fontWeight: Typography.bold },
+  dietaryBadge: { backgroundColor: 'rgba(39,174,96,0.1)', borderWidth: 1, borderColor: '#27ae60', borderRadius: BorderRadius.pill, paddingHorizontal: Spacing.sm, paddingVertical: 4 },
+  dietaryBadgeText: { color: '#27ae60', fontSize: Typography.xs, fontWeight: Typography.semibold },
+  bookBtn: { borderRadius: BorderRadius.md, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.lg, alignItems: 'center' },
+  bookBtnText: { color: Colors.white, fontSize: Typography.sm, fontWeight: Typography.bold },
+});
+
+// ── Main screen ───────────────────────────────────────────────────────────────
+function randConfNum() { return String(Math.floor(100000 + Math.random() * 900000)); }
+
+export default function DateOptionsScreen({ navigation }: Props) {
+  const { userName, userCity, budget, timeOfDay, occasion, planningFor, partnerProfile, weatherData, dateOptions, setDateOptions, setSelectedDate, setBookingTime } = useDateStore();
   const [loading, setLoading] = useState(dateOptions.length === 0);
   const [heartVisible, setHeartVisible] = useState(false);
+  const tip = getTip('dateOptions', planningFor === 'two_men' ? 'him' : planningFor === 'two_women' ? 'her' : 'both');
 
-  useEffect(() => {
-    if (dateOptions.length === 0) {
-      loadOptions();
-    }
-  }, []);
+  useEffect(() => { if (dateOptions.length === 0) load(); }, []);
 
-  const loadOptions = async () => {
+  const load = async () => {
     setLoading(true);
     try {
-      const options = await generateDateOptions(
-        userName || 'User',
-        budget,
-        occasion || 'Just Because',
-        planningFor || 'couple',
-        partnerProfile
-      );
-      setDateOptions(options);
-    } catch {
-      // fallback is handled in generateDateOptions
-    } finally {
-      setLoading(false);
-    }
+      const opts = await generateDateOptions(userName, userCity, budget, timeOfDay, occasion || 'Just Because', planningFor, partnerProfile, weatherData);
+      setDateOptions(opts);
+    } catch { /* fallback already returned from generateDateOptions */ }
+    finally { setLoading(false); }
   };
 
-  const handleBook = (option: DateOption) => {
-    const selected: SelectedDate = {
-      option,
-      bookedAt: new Date(),
-      confirmationNumber: generateConfirmationNumber(),
-    };
-    setSelectedDate(selected);
+  const handleBook = (opt: DateOption) => {
+    const sel: SelectedDate = { option: opt, bookedAt: new Date(), confirmationNumber: randConfNum() };
+    setSelectedDate(sel);
     setBookingTime(Date.now());
     setHeartVisible(true);
   };
 
-  const handleHeartComplete = () => {
-    setHeartVisible(false);
-    navigation.navigate('InvitationCard');
-  };
-
   return (
-    <SafeAreaView style={styles.container}>
-      <HeartRain visible={heartVisible} onComplete={handleHeartComplete} />
-
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Your Date Plans</Text>
-        <Text style={styles.subtitle}>Three options, all planned for you</Text>
+    <ScreenContainer>
+      <HeartRain visible={heartVisible} onDone={() => { setHeartVisible(false); navigation.navigate('InvitationCard'); }} />
+      <View style={s.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}><Text style={s.back}>← Back</Text></TouchableOpacity>
+        <Text style={s.title}>Your Date Plans</Text>
+        <Text style={s.sub}>Three options, fully planned for you</Text>
       </View>
 
       {loading ? (
-        <View style={styles.loadingContainer}>
+        <View style={s.loading}>
           <ActivityIndicator size="large" color={Colors.gold} />
-          <Text style={styles.loadingText}>Crafting your perfect dates...</Text>
-          <Text style={styles.loadingSubtext}>This takes a moment ✨</Text>
+          <Text style={s.loadingText}>Crafting your perfect dates...</Text>
+          <Text style={s.loadingSub}>This takes a moment ✨</Text>
         </View>
       ) : (
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {dateOptions.map((option: DateOption) => (
-            <DateCard key={option.id} option={option} onBook={handleBook} />
-          ))}
-
-          {/* Vendor marketplace link */}
-          <TouchableOpacity
-            style={styles.vendorLink}
-            onPress={() => navigation.navigate('VendorMarketplace')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.vendorLinkText}>Browse Date-Night Partners →</Text>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+          {dateOptions.map((opt) => <DateCard key={opt.id} option={opt} onBook={handleBook} />)}
+          <TouchableOpacity style={s.replanBtn} onPress={load} activeOpacity={0.8}>
+            <Text style={s.replanText}>🔄  None of these — try again</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={s.vendorLink} onPress={() => navigation.navigate('VendorMarketplace')} activeOpacity={0.8}>
+            <Text style={s.vendorLinkText}>Browse Date-Night Partners →</Text>
+          </TouchableOpacity>
+          <RomanticTipCard tip={tip} />
         </ScrollView>
       )}
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: {
-    paddingHorizontal: Spacing.screen,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.cardBorder,
-  },
-  backBtn: { marginBottom: Spacing.md },
-  backText: { color: Colors.gold, fontSize: Typography.base },
-  title: {
-    fontFamily: Typography.heading,
-    fontSize: Typography.xxl,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.xs,
-  },
-  subtitle: { fontSize: Typography.sm, color: Colors.textSecondary },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.md,
-  },
-  loadingText: {
-    color: Colors.textPrimary,
-    fontSize: Typography.lg,
-    fontFamily: Typography.heading,
-  },
-  loadingSubtext: { color: Colors.textMuted, fontSize: Typography.sm },
-  scroll: { flex: 1 },
-  scrollContent: {
-    padding: Spacing.screen,
-    paddingBottom: Spacing.xxxl,
-  },
-  vendorLink: {
-    alignItems: 'center',
-    paddingVertical: Spacing.lg,
-  },
-  vendorLinkText: {
-    color: Colors.gold,
-    fontSize: Typography.base,
-    fontWeight: Typography.semibold,
-  },
+const s = StyleSheet.create({
+  header: { paddingHorizontal: Spacing.screen, paddingTop: Spacing.md, paddingBottom: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.cardBorder },
+  back: { color: Colors.gold, fontSize: Typography.base, marginBottom: Spacing.sm },
+  title: { fontFamily: Typography.heading, fontSize: Typography.xxl, color: Colors.textPrimary, marginBottom: 4 },
+  sub: { color: Colors.textSecondary, fontSize: Typography.sm },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md },
+  loadingText: { color: Colors.textPrimary, fontSize: Typography.lg, fontFamily: Typography.heading },
+  loadingSub: { color: Colors.textMuted, fontSize: Typography.sm },
+  scroll: { padding: Spacing.screen, paddingBottom: Spacing.xxxl },
+  replanBtn: { alignItems: 'center', padding: Spacing.lg, backgroundColor: Colors.card, borderRadius: BorderRadius.lg, borderWidth: 1, borderColor: Colors.cardBorder, marginBottom: Spacing.md },
+  replanText: { color: Colors.textSecondary, fontSize: Typography.base, fontWeight: Typography.semibold },
+  vendorLink: { alignItems: 'center', paddingVertical: Spacing.md, marginBottom: Spacing.md },
+  vendorLinkText: { color: Colors.gold, fontSize: Typography.base, fontWeight: Typography.semibold },
 });

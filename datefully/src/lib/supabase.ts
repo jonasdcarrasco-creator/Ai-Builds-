@@ -71,6 +71,30 @@ import { createClient } from '@supabase/supabase-js';
  *   review text,
  *   submitted_at timestamp with time zone default now()
  * );
+ *
+ * -- special_occasions
+ * create table special_occasions (
+ *   id uuid default gen_random_uuid() primary key,
+ *   user_id uuid references users(id) on delete cascade,
+ *   type text not null,          -- 'anniversary' | 'birthday' | 'first_date_anniversary' | 'custom'
+ *   label text not null,
+ *   date date not null,          -- YYYY-MM-DD (annual recurring)
+ *   reminder_sent boolean default false,
+ *   created_at timestamp with time zone default now()
+ * );
+ *
+ * -- Enable Row Level Security on special_occasions
+ * alter table special_occasions enable row level security;
+ * create policy "Users can manage own occasions"
+ *   on special_occasions for all
+ *   using (auth.uid() = user_id);
+ *
+ * -- vendor_listings extended (add missing columns if upgrading)
+ * -- alter table vendor_listings add column dietary_tags text[] default '{}';
+ * -- alter table vendor_listings add column badges text[] default '{}';
+ * -- alter table vendor_listings add column distance text;
+ * -- alter table vendor_listings add column parking_info text;
+ * -- alter table vendor_listings add column review_count integer default 0;
  */
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
@@ -128,4 +152,54 @@ export const submitRating = async (bookingId: string, stars: number, review?: st
     review,
     submitted_at: new Date().toISOString(),
   });
+};
+
+// ─── Special Occasions ────────────────────────────────────────────────────────
+
+export const saveSpecialOccasion = async (
+  userId: string,
+  occasion: { type: string; label: string; date: string },
+) => {
+  return supabase.from('special_occasions').insert({
+    user_id: userId,
+    type: occasion.type,
+    label: occasion.label,
+    date: occasion.date,
+    reminder_sent: false,
+  });
+};
+
+export const fetchSpecialOccasions = async (userId: string) => {
+  return supabase
+    .from('special_occasions')
+    .select('*')
+    .eq('user_id', userId)
+    .order('date', { ascending: true });
+};
+
+export const deleteSpecialOccasion = async (occasionId: string) => {
+  return supabase.from('special_occasions').delete().eq('id', occasionId);
+};
+
+export const markReminderSent = async (occasionId: string) => {
+  return supabase
+    .from('special_occasions')
+    .update({ reminder_sent: true })
+    .eq('id', occasionId);
+};
+
+// ─── Fetch occasions due for reminder (7 days ahead) ─────────────────────────
+// Call this from a Supabase Edge Function or cron job, not client-side
+export const getOccasionsDueForReminder = async () => {
+  const today = new Date();
+  const target = new Date(today);
+  target.setDate(today.getDate() + 7);
+  const mm = String(target.getMonth() + 1).padStart(2, '0');
+  const dd = String(target.getDate()).padStart(2, '0');
+  // Match any year — compare month-day only
+  return supabase
+    .from('special_occasions')
+    .select('*, users(email, name)')
+    .eq('reminder_sent', false)
+    .like('date', `%-${mm}-${dd}`);
 };

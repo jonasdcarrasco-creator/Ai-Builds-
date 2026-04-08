@@ -7,13 +7,16 @@ import {
   Animated,
   Dimensions,
   Share,
+  Linking,
+  Platform,
+  Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { useDateStore } from '../store';
 import { shareInvitationText } from '../lib/booking';
 import { Colors, Typography, Spacing, BorderRadius } from '../constants/theme';
+import ScreenContainer from '../components/common/ScreenContainer';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'InvitationCard'>;
@@ -98,16 +101,35 @@ export default function InvitationCard({ navigation }: Props) {
     ).start();
   }, []);
 
+  // Instagram Stories share
+  const handleInstagramStories = async () => {
+    const bgTop = encodeURIComponent('#000000');
+    const bgBottom = encodeURIComponent('#c9a84c');
+    const iosUrl = `instagram-stories://share?backgroundTopColor=${bgTop}&backgroundBottomColor=${bgBottom}`;
+    const androidUrl = 'instagram://story-camera';
+    const url = Platform.OS === 'ios' ? iosUrl : androidUrl;
+    const canOpen = await Linking.canOpenURL(url).catch(() => false);
+    if (canOpen) {
+      Linking.openURL(url).catch(() => {});
+    } else {
+      Alert.alert(
+        'Instagram not found',
+        'Instagram app is not installed. Use the Share button to share this invite.',
+        [{ text: 'OK' }],
+      );
+    }
+  };
+
   if (!selectedDate) {
     return (
-      <SafeAreaView style={styles.container}>
+      <ScreenContainer>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>No date selected.</Text>
           <TouchableOpacity onPress={() => navigation.navigate('DateOptions')}>
             <Text style={styles.goldLink}>Go back</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </ScreenContainer>
     );
   }
 
@@ -149,7 +171,7 @@ export default function InvitationCard({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ScreenContainer>
       <StarParticles />
 
       {/* Header */}
@@ -217,7 +239,7 @@ export default function InvitationCard({ navigation }: Props) {
         </View>
       </Animated.View>
 
-      {/* Actions */}
+      {/* Actions row 1 */}
       <View style={styles.actions}>
         <TouchableOpacity style={styles.textBtn} onPress={handleSendText} activeOpacity={0.85}>
           <Text style={styles.textBtnText}>💬 Send via Text</Text>
@@ -227,6 +249,15 @@ export default function InvitationCard({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
+      {/* Instagram Stories button */}
+      <TouchableOpacity
+        style={styles.igBtn}
+        onPress={handleInstagramStories}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.igBtnText}>📸 Share to Instagram Stories</Text>
+      </TouchableOpacity>
+
       {/* Confirm button */}
       <TouchableOpacity
         style={styles.confirmBtn}
@@ -235,12 +266,12 @@ export default function InvitationCard({ navigation }: Props) {
       >
         <Text style={styles.confirmBtnText}>Confirm Booking →</Text>
       </TouchableOpacity>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1, backgroundColor: Colors.background }, // kept for errorContainer reference
   header: {
     paddingHorizontal: Spacing.screen,
     paddingTop: Spacing.md,
@@ -355,6 +386,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   shareBtnText: { color: Colors.gold, fontSize: Typography.sm, fontWeight: Typography.semibold },
+  igBtn: {
+    marginHorizontal: Spacing.screen,
+    marginBottom: Spacing.sm,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E1306C',
+    backgroundColor: 'rgba(225,48,108,0.1)',
+  },
+  igBtnText: {
+    color: '#E1306C',
+    fontSize: Typography.sm,
+    fontWeight: Typography.semibold,
+  },
   confirmBtn: {
     marginHorizontal: Spacing.screen,
     marginBottom: Spacing.xl,

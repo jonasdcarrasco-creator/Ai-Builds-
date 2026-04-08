@@ -1,290 +1,211 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList, PartnerProfile } from '../types';
 import { useDateStore } from '../store';
 import { Colors, Typography, Spacing, BorderRadius } from '../constants/theme';
+import ScreenContainer from '../components/common/ScreenContainer';
+import RomanticTipCard from '../components/common/RomanticTip';
+import { getTip } from '../data/romanticTips';
 
-type Props = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'PartnerProfile'>;
-};
+type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'PartnerProfile'> };
 
-const SECTIONS: {
-  key: keyof PartnerProfile;
-  emoji: string;
-  title: string;
-  chips: string[];
-}[] = [
-  {
-    key: 'foodDrinks',
-    emoji: '🍕',
-    title: 'Food & Drinks',
-    chips: ['Italian', 'Sushi', 'BBQ', 'Vegan', 'Seafood', 'Cocktails', 'Wine', 'Craft Beer', 'Coffee', 'Fast Food'],
-  },
-  {
-    key: 'activities',
-    emoji: '🎭',
-    title: 'Activities',
-    chips: ['Movies', 'Theater', 'Live Music', 'Dancing', 'Comedy Show', 'Art Galleries', 'Sports', 'Trivia'],
-  },
-  {
-    key: 'outdoors',
-    emoji: '🌿',
-    title: 'Outdoors',
-    chips: ['Parks', 'Hiking', 'Bike Rides', 'Outdoor Concerts', 'Rooftop Bars', 'Water Activities'],
-  },
-  {
-    key: 'stayHome',
-    emoji: '🏠',
-    title: 'Stay at Home',
-    chips: ['Cook Together', 'Movie Night', 'Game Night', 'Spa Night', 'Binge TV'],
-  },
-  {
-    key: 'personality',
-    emoji: '💬',
-    title: 'Their Personality',
-    chips: ['Adventurous', 'Romantic', 'Laid Back', 'Spontaneous', 'Planner', 'Night Owl', 'Early Bird'],
-  },
-  {
-    key: 'notFanOf',
-    emoji: '❌',
-    title: 'Not a Fan Of',
-    chips: ['Loud Places', 'Crowded Spots', 'Spicy Food', 'Outdoors', 'Fancy Restaurants', 'Horror Movies'],
-  },
-  {
-    key: 'accessibility',
-    emoji: '♿',
-    title: 'Accessibility',
-    chips: ['Wheelchair Access', 'Limited Walking', 'Quiet Spaces', 'No Stairs', 'Dietary Restrictions'],
-  },
+const DIETARY_NEEDS = [
+  'Vegan','Vegetarian','Pescatarian','Gluten Free','Halal','Kosher',
+  'Dairy Free','Keto','Paleo','Nut Allergy','Shellfish Allergy','No Restrictions',
 ];
+
+const CUISINE_PREFS = [
+  'Italian','Sushi','Mexican','Steakhouse','French','Spanish Tapas','Mediterranean','Greek',
+  'Indian','Korean','Vietnamese','Thai','Chinese','Japanese','Asian Fusion',
+  'Ethiopian','Caribbean','Soul Food','BBQ','Seafood','Farm to Table','Brunch',
+  'Burgers','Pizza','Dessert Bar','Coffee & Tea','Wine Bar','Cocktail Bar','Brewery','Mocktails',
+];
+
+const ACTIVITIES = [
+  'Movies','Theater','Live Music','Dancing','Comedy Show','Art Galleries',
+  'Sports Games','Trivia Night','Cooking Class','Yoga','Painting Night',
+  'Bowling','Mini Golf','Escape Room','Karaoke',
+];
+
+const ACCESSIBILITY = [
+  'Wheelchair Friendly','No Stairs','Pet Friendly','LGBTQ+ Welcoming',
+  'Kid Friendly','Minority-Owned','Woman-Owned','Quiet Spaces',
+];
+
+const PERSONALITY = [
+  'Adventurous','Romantic','Laid Back','Spontaneous','Homebody',
+  'Night Owl','Early Bird','Foodie','Artsy','Athletic',
+];
+
+const AVOID = [
+  'Loud Places','Crowded Spots','Spicy Food','Outdoors','Fancy Restaurants',
+  'Horror Movies','Alcohol','Smoking Areas','Long Waits',
+];
+
+function ChipSection({
+  title, emoji, chips, selected, onToggle, green = false,
+}: {
+  title: string; emoji: string; chips: string[];
+  selected: string[]; onToggle: (v: string) => void; green?: boolean;
+}) {
+  return (
+    <View style={sec.container}>
+      <Text style={sec.title}>{emoji} {title}</Text>
+      <View style={sec.row}>
+        {chips.map((chip) => {
+          const active = selected.includes(chip);
+          return (
+            <TouchableOpacity
+              key={chip}
+              style={[sec.chip, active && (green ? sec.chipGreen : sec.chipGold)]}
+              onPress={() => onToggle(chip)}
+              activeOpacity={0.8}
+            >
+              <Text style={[sec.chipText, active && (green ? sec.chipTextGreen : sec.chipTextGold)]}>
+                {chip}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const sec = StyleSheet.create({
+  container: { marginBottom: Spacing.xl, paddingHorizontal: Spacing.screen },
+  title: { color: Colors.textPrimary, fontSize: Typography.base, fontWeight: Typography.semibold, marginBottom: Spacing.sm },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs },
+  chip: {
+    backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.cardBorder,
+    borderRadius: BorderRadius.pill, paddingHorizontal: Spacing.sm, paddingVertical: 6,
+  },
+  chipGold: { borderColor: Colors.gold, backgroundColor: 'rgba(201,168,76,0.12)' },
+  chipGreen: { borderColor: '#27ae60', backgroundColor: 'rgba(39,174,96,0.1)' },
+  chipText: { color: Colors.textSecondary, fontSize: Typography.sm },
+  chipTextGold: { color: Colors.gold, fontWeight: Typography.semibold },
+  chipTextGreen: { color: '#27ae60', fontWeight: Typography.semibold },
+});
 
 export default function PartnerProfileScreen({ navigation }: Props) {
   const { partnerProfile, setPartnerProfile } = useDateStore();
-  const [profile, setProfile] = useState<PartnerProfile>({ ...partnerProfile });
 
-  const toggleChip = (key: keyof PartnerProfile, value: string) => {
-    setProfile((prev) => {
-      const current = prev[key];
-      const updated = current.includes(value)
-        ? current.filter((v) => v !== value)
-        : [...current, value];
-      return { ...prev, [key]: updated };
-    });
+  const [dietaryNeeds, setDietaryNeeds] = useState<string[]>(partnerProfile.dietaryNeeds || []);
+  const [cuisinePrefs, setCuisinePrefs] = useState<string[]>(partnerProfile.cuisinePreferences || []);
+  const [activities, setActivities] = useState<string[]>(partnerProfile.activities || []);
+  const [accessibility, setAccessibility] = useState<string[]>(partnerProfile.accessibility || []);
+  const [personality, setPersonality] = useState<string[]>(partnerProfile.personality || []);
+  const [avoid, setAvoid] = useState<string[]>(partnerProfile.avoid || []);
+
+  const tip = getTip('partnerProfile', 'both');
+
+  const toggle = (list: string[], setList: (v: string[]) => void) => (val: string) => {
+    setList(list.includes(val) ? list.filter((v) => v !== val) : [...list, val]);
   };
 
   const handleSave = () => {
-    setPartnerProfile(profile);
-    navigation.navigate('AIChat');
+    setPartnerProfile({ dietaryNeeds, cuisinePreferences: cuisinePrefs, activities, accessibility, personality, avoid });
+    navigation.navigate('WeatherChat');
   };
 
-  const hasAnySelection = Object.values(profile).some((arr) => arr.length > 0);
-
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+    <ScreenContainer>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Text style={styles.backText}>← Back</Text>
-          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.backText}>← Back</Text></TouchableOpacity>
           <Text style={styles.title}>Your Partner's Vibe</Text>
           <Text style={styles.subtitle}>Set it once, never again</Text>
-          <Text style={styles.hint}>Select everything that fits — the more you share, the better your dates!</Text>
         </View>
 
-        {/* Sections */}
-        {SECTIONS.map((section) => (
-          <View key={section.key} style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionEmoji}>{section.emoji}</Text>
-              <Text style={styles.sectionTitle}>{section.title}</Text>
-              {profile[section.key].length > 0 && (
-                <View style={styles.countBadge}>
-                  <Text style={styles.countText}>{profile[section.key].length}</Text>
-                </View>
-              )}
-            </View>
-            <View style={styles.chipGrid}>
-              {section.chips.map((chip) => {
-                const isSelected = profile[section.key].includes(chip);
-                return (
-                  <TouchableOpacity
-                    key={chip}
-                    style={[styles.chip, isSelected && styles.chipSelected]}
-                    onPress={() => toggleChip(section.key, chip)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                      {chip}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        ))}
+        {/* FOOD SECTION 1 — Dietary Needs */}
+        <View style={styles.foodHeader}>
+          <Text style={styles.foodSectionTitle}>🍽️ Food & Drinks</Text>
+        </View>
+        <View style={styles.dietaryBanner}>
+          <Text style={styles.dietaryBannerIcon}>🛡️</Text>
+          <Text style={styles.dietaryBannerText}>Dietary needs are used as hard filters — only compliant venues will appear</Text>
+        </View>
+        <ChipSection
+          title="Dietary Needs"
+          emoji="✅"
+          chips={DIETARY_NEEDS}
+          selected={dietaryNeeds}
+          onToggle={toggle(dietaryNeeds, setDietaryNeeds)}
+          green={true}
+        />
 
-        {/* Skip option */}
-        {!hasAnySelection && (
-          <TouchableOpacity
-            style={styles.skipLink}
-            onPress={() => navigation.navigate('AIChat')}
-          >
-            <Text style={styles.skipText}>Skip for now →</Text>
-          </TouchableOpacity>
-        )}
-      </ScrollView>
+        <ChipSection
+          title="Cuisine Preferences"
+          emoji="🌮"
+          chips={CUISINE_PREFS}
+          selected={cuisinePrefs}
+          onToggle={toggle(cuisinePrefs, setCuisinePrefs)}
+        />
 
-      {/* Save button */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.saveButton}
-          onPress={handleSave}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.saveText}>
-            {hasAnySelection ? 'Save & Continue' : 'Continue'}
-          </Text>
+        <ChipSection
+          title="Activities"
+          emoji="🎭"
+          chips={ACTIVITIES}
+          selected={activities}
+          onToggle={toggle(activities, setActivities)}
+        />
+
+        <ChipSection
+          title="Accessibility & Filters"
+          emoji="♿"
+          chips={ACCESSIBILITY}
+          selected={accessibility}
+          onToggle={toggle(accessibility, setAccessibility)}
+        />
+
+        <ChipSection
+          title="Their Personality"
+          emoji="💬"
+          chips={PERSONALITY}
+          selected={personality}
+          onToggle={toggle(personality, setPersonality)}
+        />
+
+        <ChipSection
+          title="Not a Fan Of"
+          emoji="❌"
+          chips={AVOID}
+          selected={avoid}
+          onToggle={toggle(avoid, setAvoid)}
+        />
+
+        <RomanticTipCard tip={tip} />
+
+        <TouchableOpacity style={styles.saveBtn} onPress={handleSave} activeOpacity={0.88}>
+          <Text style={styles.saveBtnText}>Save & Continue →</Text>
         </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+        <View style={{ height: Spacing.xxxl }} />
+      </ScrollView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
+  scrollContent: { paddingBottom: Spacing.xxxl },
+  header: { paddingHorizontal: Spacing.screen, paddingTop: Spacing.md, paddingBottom: Spacing.lg },
+  backText: { color: Colors.gold, fontSize: Typography.base, marginBottom: Spacing.md },
+  title: { fontFamily: Typography.heading, fontSize: Typography.xxl, color: Colors.textPrimary, marginBottom: 4 },
+  subtitle: { color: Colors.textSecondary, fontSize: Typography.sm },
+  foodHeader: { paddingHorizontal: Spacing.screen, paddingBottom: Spacing.xs },
+  foodSectionTitle: { fontFamily: Typography.heading, fontSize: Typography.lg, color: Colors.textPrimary },
+  dietaryBanner: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm,
+    backgroundColor: 'rgba(39,174,96,0.08)', borderWidth: 1, borderColor: 'rgba(39,174,96,0.25)',
+    borderRadius: BorderRadius.md, padding: Spacing.md,
+    marginHorizontal: Spacing.screen, marginBottom: Spacing.md,
   },
-  scroll: {
-    flex: 1,
+  dietaryBannerIcon: { fontSize: 16, marginTop: 1 },
+  dietaryBannerText: { color: '#27ae60', fontSize: Typography.xs, flex: 1, lineHeight: 18 },
+  saveBtn: {
+    backgroundColor: Colors.red, borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.lg, alignItems: 'center', marginHorizontal: Spacing.screen,
   },
-  scrollContent: {
-    paddingHorizontal: Spacing.screen,
-    paddingBottom: Spacing.xl,
-  },
-  header: {
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.xxl,
-  },
-  backBtn: {
-    marginBottom: Spacing.md,
-  },
-  backText: {
-    color: Colors.gold,
-    fontSize: Typography.base,
-  },
-  title: {
-    fontFamily: Typography.heading,
-    fontSize: Typography.xxl,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.xs,
-  },
-  subtitle: {
-    fontSize: Typography.base,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.sm,
-  },
-  hint: {
-    fontSize: Typography.sm,
-    color: Colors.textMuted,
-    lineHeight: 18,
-  },
-  section: {
-    marginBottom: Spacing.xxl,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-    marginBottom: Spacing.md,
-  },
-  sectionEmoji: {
-    fontSize: 18,
-  },
-  sectionTitle: {
-    fontSize: Typography.md,
-    color: Colors.textPrimary,
-    fontWeight: Typography.semibold,
-    flex: 1,
-  },
-  countBadge: {
-    backgroundColor: Colors.gold,
-    borderRadius: BorderRadius.pill,
-    width: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  countText: {
-    color: Colors.black,
-    fontSize: 10,
-    fontWeight: Typography.bold,
-  },
-  chipGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.xs,
-  },
-  chip: {
-    backgroundColor: Colors.card,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-    borderRadius: BorderRadius.pill,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 6,
-  },
-  chipSelected: {
-    borderColor: Colors.gold,
-    backgroundColor: 'rgba(201, 168, 76, 0.12)',
-  },
-  chipText: {
-    color: Colors.textSecondary,
-    fontSize: Typography.sm,
-  },
-  chipTextSelected: {
-    color: Colors.gold,
-    fontWeight: Typography.semibold,
-  },
-  skipLink: {
-    alignItems: 'center',
-    paddingVertical: Spacing.md,
-  },
-  skipText: {
-    color: Colors.textMuted,
-    fontSize: Typography.sm,
-  },
-  footer: {
-    paddingHorizontal: Spacing.screen,
-    paddingBottom: Spacing.xl,
-    paddingTop: Spacing.md,
-    backgroundColor: Colors.background,
-    borderTopWidth: 1,
-    borderTopColor: Colors.cardBorder,
-  },
-  saveButton: {
-    backgroundColor: Colors.red,
-    borderRadius: BorderRadius.lg,
-    paddingVertical: Spacing.lg,
-    alignItems: 'center',
-  },
-  saveText: {
-    color: Colors.white,
-    fontSize: Typography.md,
-    fontWeight: Typography.bold,
-    letterSpacing: 0.5,
-  },
+  saveBtnText: { color: Colors.white, fontSize: Typography.base, fontWeight: Typography.bold },
 });
